@@ -31,8 +31,10 @@ return new class extends Migration
             $table->string('estado', 20)->default('pendiente');
 
             // Quién creó y quién aprobó.
-            $table->foreignId('creado_por')->nullable()->constrained('usuarios')->nullOnDelete();
-            $table->foreignId('aprobado_por')->nullable()->constrained('usuarios')->nullOnDelete();
+            // Sin constraint físico: FreeTDS falla al aplicar varios ALTER TABLE
+            // consecutivos. Eloquent conserva las relaciones con usuarios.
+            $table->unsignedBigInteger('creado_por')->nullable();
+            $table->unsignedBigInteger('aprobado_por')->nullable();
             $table->timestamp('aprobado_en')->nullable();
 
             $table->timestamps();

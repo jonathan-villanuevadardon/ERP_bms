@@ -31,6 +31,7 @@ return [
             'username'       => env('DB_USERNAME', ''),
             'password'       => env('DB_PASSWORD', ''),
             'charset'        => env('DB_CHARSET', 'UTF-8'),
+            'version'        => env('DB_TDS_VERSION', '7.4'),
             'prefix'         => '',
             'prefix_indexes' => true,
             'encrypt'        => env('DB_ENCRYPT', 'no'),

@@ -28,8 +28,9 @@ return new class extends Migration
 
             $table->string('estado', 20)->default('pendiente'); // pendiente | aprobado | rechazado
 
-            $table->foreignId('creado_por')->nullable()->constrained('usuarios')->nullOnDelete();
-            $table->foreignId('aprobado_por')->nullable()->constrained('usuarios')->nullOnDelete();
+            // Relaciones gestionadas por Eloquent para compatibilidad FreeTDS.
+            $table->unsignedBigInteger('creado_por')->nullable();
+            $table->unsignedBigInteger('aprobado_por')->nullable();
             $table->timestamp('aprobado_en')->nullable();
 
             $table->timestamps();

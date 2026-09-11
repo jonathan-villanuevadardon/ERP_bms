@@ -59,7 +59,8 @@ routes/web.php              # Rutas del sistema
 
 En Hostinger Shared Hosting configurar `DB_CONNECTION=sqlsrv` y
 `DB_SQLSERVER_PDO_DRIVER=dblib`; Laravel conserva su soporte T-SQL pero crea
-el PDO mediante FreeTDS, evitando la dependencia del Microsoft ODBC Driver.
+el PDO mediante FreeTDS 7.4 (`DB_TDS_VERSION=7.4`), evitando la dependencia
+del Microsoft ODBC Driver.
 - Composer.
 - Acceso de red al SQL Server en el puerto **1433**.
 
