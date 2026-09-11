@@ -15,7 +15,7 @@ return new class extends Migration
     public function up(): void
     {
         $procedure = <<<'SQL'
-CREATE OR ALTER PROCEDURE dbo.sp_refrescar_hechos_asistencia
+CREATE PROCEDURE dbo.sp_refrescar_hechos_asistencia
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -77,10 +77,13 @@ BEGIN
 END
 SQL;
 
-        // FreeTDS agrega opciones de sesión al lote. El SQL dinámico garantiza
-        // que CREATE PROCEDURE sea la primera instrucción de su propio batch.
-        $escapedProcedure = str_replace("'", "''", $procedure);
-        DB::unprepared("EXEC(N'{$escapedProcedure}')");
+        // SQL Server 2016 RTM no admite CREATE OR ALTER. DROP y CREATE se
+        // envían como lotes separados para que CREATE sea la primera sentencia.
+        DB::unprepared(<<<'SQL'
+IF OBJECT_ID('dbo.sp_refrescar_hechos_asistencia', 'P') IS NOT NULL
+    DROP PROCEDURE dbo.sp_refrescar_hechos_asistencia
+SQL);
+        DB::unprepared($procedure);
     }
 
     public function down(): void

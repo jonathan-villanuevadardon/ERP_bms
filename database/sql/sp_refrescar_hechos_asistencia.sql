@@ -18,7 +18,11 @@
    entero (bigint) descartando valores no numéricos.
    ===================================================================== */
 
-CREATE OR ALTER PROCEDURE dbo.sp_refrescar_hechos_asistencia
+IF OBJECT_ID('dbo.sp_refrescar_hechos_asistencia', 'P') IS NOT NULL
+    DROP PROCEDURE dbo.sp_refrescar_hechos_asistencia;
+GO
+
+CREATE PROCEDURE dbo.sp_refrescar_hechos_asistencia
 AS
 BEGIN
     SET NOCOUNT ON;
