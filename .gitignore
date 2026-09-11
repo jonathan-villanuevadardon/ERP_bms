@@ -1,0 +1,51 @@
+# El archivo .env contiene credenciales sensibles y NO debe versionarse.
+# Usar .env.example como plantilla.
+
+# ==== Laravel / Composer ====
+/vendor/
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ==== Variables de entorno con credenciales ====
+.env
+.env.backup
+.env.production
+.env.local
+.env.staging
+
+# ==== Archivos de carga / plantillas generadas en runtime ====
+storage/app/public/*
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/framework/testing/*
+storage/logs/*.log
+
+# ==== Claves / certificados ====
+*.key
+*.pem
+*.crt
+
+# ==== Sistema operativo / IDE ====
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.code-workspace
+.phpunit.result.cache
+.phpunit.cache
+.homestead.yaml
+Homestead.json
+Homestead.yaml
+auth.json
+
+# ==== Laravel Sail (opcional, no usado en producción) ====
+docker-compose.yml
+docker-compose.override.yml
+
+# ==== Composer lock alternativo / dependencias locales ====
+composer.lock
+phpunit.xml
+.review/
