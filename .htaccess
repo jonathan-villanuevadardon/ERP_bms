@@ -1,0 +1,17 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Hostinger despliega el repositorio completo en public_html. Esta regla
+    # dirige todas las solicitudes al directorio público de Laravel sin
+    # exponer app/, config/, storage/, vendor/ ni archivos de credenciales.
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+# Impide servir archivos ocultos como .env y .gitignore si Apache evalúa la
+# solicitud antes de la redirección anterior.
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+Options -Indexes
