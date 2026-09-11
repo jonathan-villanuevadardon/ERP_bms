@@ -1,23 +1,20 @@
-/* =====================================================================
-   Script SQL: materialización INCREMENTAL de la tabla de hechos.
+<?php
 
-   Propósito:
-     Convertir la vista VW_Listas_asistencia_unic (que proviene de un
-     checador con carga DIFERIDA y no siempre en línea) en una tabla de
-     hechos "hechos_asistencia" con una fila por (empleado, día trabajado).
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Support\Facades\DB;
 
-   Estrategia de "data viva":
-     - NO trunca: conserva todo el historial ya procesado.
-     - Inserta SOLO los días que aún NO existen en la tabla (incremental).
-       Si el checador sube datos con retraso (sin internet), en el siguiente
-       refresco simplemente aparecen como filas nuevas.
-     - Es seguro reejecutar cuantas veces se quiera (idempotente por la
-       cláusula NOT EXISTS y el índice único/imputado de deduplicación).
-
-   Convención: la vista usa `clave` como nvarchar; aquí se normaliza a
-   entero (bigint) descartando valores no numéricos.
-   ===================================================================== */
-
+/**
+ * Crea el SP que sincroniza incrementalmente los días del checador.
+ *
+ * La carga conserva el historial y agrega asistencias tardías en la siguiente
+ * ejecución. Un bloqueo de aplicación evita dos refrescos simultáneos entre
+ * el cron y el botón de emergencia del administrador.
+ */
+return new class extends Migration
+{
+    public function up(): void
+    {
+        DB::unprepared(<<<'SQL'
 CREATE OR ALTER PROCEDURE dbo.sp_refrescar_hechos_asistencia
 AS
 BEGIN
@@ -33,6 +30,7 @@ BEGIN
         @LockOwner = 'Session',
         @LockTimeout = 0;
 
+    -- Otro proceso ya está sincronizando; no se duplica el trabajo.
     IF @lock_result < 0
     BEGIN
         SELECT @filas_insertadas AS filas_insertadas;
@@ -49,7 +47,11 @@ BEGIN
               AND day_F IS NOT NULL
         )
         INSERT INTO dbo.hechos_asistencia (clave, day_f, created_at, updated_at)
-        SELECT fuente.clave, fuente.day_f, GETDATE(), GETDATE()
+        SELECT
+            fuente.clave,
+            fuente.day_f,
+            GETDATE(),
+            GETDATE()
         FROM fuente
         WHERE NOT EXISTS (
             SELECT 1
@@ -72,5 +74,12 @@ BEGIN
             @LockOwner = 'Session';
         THROW;
     END CATCH;
-END;
-GO
+END
+SQL);
+    }
+
+    public function down(): void
+    {
+        DB::unprepared('DROP PROCEDURE IF EXISTS dbo.sp_refrescar_hechos_asistencia');
+    }
+};
