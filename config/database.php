@@ -20,21 +20,22 @@ return [
 
     'connections' => [
 
-        // Driver SQL Server vía pdo_sqlsrv (recomendado en Hostinger + SQL Server)
+        // SQL Server vía Microsoft ODBC o FreeTDS, según la variable de entorno.
         'sqlsrv' => [
             'driver'         => 'sqlsrv',
+            'pdo_driver'     => env('DB_SQLSERVER_PDO_DRIVER', 'sqlsrv'),
             'url'            => env('DB_URL'),
             'host'           => env('DB_HOST', 'nominarc4.duckdns.org'),
             'port'           => env('DB_PORT', '1433'),
             'database'       => env('DB_DATABASE', 'ERPBMS'),
             'username'       => env('DB_USERNAME', ''),
             'password'       => env('DB_PASSWORD', ''),
-            'charset'        => 'utf8',
+            'charset'        => env('DB_CHARSET', 'UTF-8'),
             'prefix'         => '',
             'prefix_indexes' => true,
             'encrypt'        => env('DB_ENCRYPT', 'no'),
             'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'true'),
-            'options'        => extension_loaded('pdo_sqlsrv')
+            'options'        => env('DB_SQLSERVER_PDO_DRIVER', 'sqlsrv') === 'sqlsrv' && extension_loaded('pdo_sqlsrv')
                 ? array_filter([
                     PDO::ATTR_STRINGIFY_FETCHES => false,
                     PDO::ATTR_EMULATE_PREPARES => false,

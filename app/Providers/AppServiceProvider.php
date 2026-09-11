@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Database\Connectors\SqlServerConnector;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -17,7 +18,16 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Conserva SqlServerConnection y la gramática T-SQL de Laravel, pero
+        // permite construir el PDO mediante FreeTDS cuando el hosting lo exige.
+        $this->app->bind('db.connector.sqlsrv', function ($app) {
+            $preferredDriver = $app['config']->get(
+                'database.connections.sqlsrv.pdo_driver',
+                'sqlsrv'
+            );
+
+            return new SqlServerConnector($preferredDriver);
+        });
     }
 
     /**

@@ -53,9 +53,13 @@ routes/web.php              # Rutas del sistema
 
 ## Requisitos
 
-- PHP **8.3+** con extensiones **`pdo_sqlsrv`**, **`sqlsrv`**, **`gd`**,
+- PHP **8.3+** con **`pdo_dblib`** (FreeTDS en Hostinger), **`gd`**,
   **`zip`**, **`mbstring`**, **`dom`**, **`xml`**, **`xmlreader`**,
   **`xmlwriter`** y **`simplexml`** habilitadas (verificar en `phpinfo`).
+
+En Hostinger Shared Hosting configurar `DB_CONNECTION=sqlsrv` y
+`DB_SQLSERVER_PDO_DRIVER=dblib`; Laravel conserva su soporte T-SQL pero crea
+el PDO mediante FreeTDS, evitando la dependencia del Microsoft ODBC Driver.
 - Composer.
 - Acceso de red al SQL Server en el puerto **1433**.
 
