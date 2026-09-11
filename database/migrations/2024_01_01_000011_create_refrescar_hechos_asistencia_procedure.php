@@ -14,7 +14,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::unprepared(<<<'SQL'
+        $procedure = <<<'SQL'
 CREATE OR ALTER PROCEDURE dbo.sp_refrescar_hechos_asistencia
 AS
 BEGIN
@@ -75,7 +75,12 @@ BEGIN
         THROW;
     END CATCH;
 END
-SQL);
+SQL;
+
+        // FreeTDS agrega opciones de sesión al lote. El SQL dinámico garantiza
+        // que CREATE PROCEDURE sea la primera instrucción de su propio batch.
+        $escapedProcedure = str_replace("'", "''", $procedure);
+        DB::unprepared("EXEC(N'{$escapedProcedure}')");
     }
 
     public function down(): void
