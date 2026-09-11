@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\SqlServerDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -39,6 +40,6 @@ class HechoAsistencia extends Model
      */
     protected $casts = [
         'clave' => 'integer',
-        'day_f' => 'date',
+        'day_f' => SqlServerDate::class,
     ];
 }

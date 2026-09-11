@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\SqlServerDate;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -17,7 +18,7 @@ class ListaAsistenciaNomina extends Model
 
     protected $casts = [
         'clave' => 'integer',
-        'fecha' => 'date',
+        'fecha' => SqlServerDate::class,
         'tiene_asistencia' => 'boolean',
         'tiene_descanso' => 'boolean',
         'tiene_vacaciones' => 'boolean',

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\SqlServerDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -49,8 +50,8 @@ class RolDescanso extends Model
         'clave' => 'integer',
         'dias_trabajo' => 'integer',
         'dias_descanso' => 'integer',
-        'fecha_inicio' => 'date',
-        'fecha_fin' => 'date',
+        'fecha_inicio' => SqlServerDate::class,
+        'fecha_fin' => SqlServerDate::class,
         'activo' => 'boolean',
     ];
 }

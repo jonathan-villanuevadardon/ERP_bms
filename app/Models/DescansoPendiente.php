@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Casts\SqlServerDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -49,15 +51,15 @@ class DescansoPendiente extends Model
      */
     protected $casts = [
         'clave' => 'integer',
-        'fecha_inicio' => 'date',
-        'fecha_fin' => 'date',
+        'fecha_inicio' => SqlServerDate::class,
+        'fecha_fin' => SqlServerDate::class,
         'aprobado_en' => 'datetime',
     ];
 
     /**
      * Relación: usuario que creó el registro.
      *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     * @return BelongsTo
      */
     public function creadoPor()
     {
@@ -67,7 +69,7 @@ class DescansoPendiente extends Model
     /**
      * Relación: usuario que aprobó el registro.
      *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     * @return BelongsTo
      */
     public function aprobadoPor()
     {
