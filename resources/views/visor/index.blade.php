@@ -24,6 +24,9 @@
             @endforeach
         </select>
     </div>
+    <div class="col-md-3">
+        <input type="number" name="clave" class="form-control" placeholder="Número de empleado exacto" value="{{ $clave }}">
+    </div>
     <div class="col-md-2">
         <button type="submit" class="btn btn-outline-dark w-100">Filtrar</button>
     </div>
@@ -41,7 +44,7 @@
                     <th>Rol (T x D)</th>
                     <th>Días trabajados</th>
                     <th>Descansos esperados</th>
-                    <th>Bloque actual</th>
+                    <th>Racha actual / máxima</th>
                     <th>Estado</th>
                 </tr>
             </thead>
@@ -55,7 +58,7 @@
                     <td><strong>{{ $f['dias_trabajo_rol'] }} x {{ $f['dias_descanso_rol'] }}</strong></td>
                     <td>{{ $f['dias_trabajados'] }}</td>
                     <td>{{ $f['dias_descanso_esperados'] }}</td>
-                    <td>{{ $f['bloque_actual'] }} / {{ $f['dias_trabajo_rol'] }}</td>
+                    <td>{{ $f['bloque_actual'] }} / {{ $f['bloque_maximo'] }} <span class="text-muted">(límite {{ $f['dias_trabajo_rol'] }})</span></td>
                     <td>
                         <span class="badge {{ $f['cumple'] ? 'bg-success' : 'bg-danger' }}">
                             {{ $f['cumple'] ? 'Cumple' : 'Revisar' }}
@@ -71,6 +74,6 @@
 </div>
 
 <div class="text-muted small mt-2">
-    <i class="bi bi-info-circle"></i> El estado "Cumple" indica que el bloque de trabajo actual no excede el rol asignado. El refresco automático ocurre cada 5 horas; el botón rojo "Ejecutar SP (emergencia)" solo está disponible para el administrador y sincroniza la asistencia de inmediato.
+    <i class="bi bi-info-circle"></i> El estado "Cumple" indica que ninguna racha de asistencia consecutiva del periodo excede los días de trabajo del rol. El refresco automático ocurre cada 5 horas; el botón rojo "Ejecutar SP (emergencia)" solo está disponible para el administrador y sincroniza la asistencia de inmediato.
 </div>
 @endsection

@@ -2,11 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\RolesDescansoPlantilla;
+use App\Imports\RolesDescansoImport;
 use App\Models\RolDescanso;
 use App\Services\EmpleadoService;
+use App\Services\SeccionService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Imports\RolesDescansoImport;
+use Maatwebsite\Excel\Validators\ValidationException;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
  * Controlador "RolDescansoController".
@@ -25,15 +31,14 @@ class RolDescansoController extends Controller
     /**
      * Lista las asignaciones de rol existentes (con filtros opcionales).
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\View\View
+     * @return View
      */
     public function index(Request $request)
     {
         $q = RolDescanso::query();
 
         // Filtro por sección (respeta la restricción del perfil del usuario).
-        $seccionesPermitidas = $this->seccionesPermitidas($request->user());
+        $seccionesPermitidas = SeccionService::permitidas($request->user());
         if ($seccionesPermitidas !== null) {
             $q->whereIn('seccion', $seccionesPermitidas);
         }
@@ -51,7 +56,7 @@ class RolDescansoController extends Controller
 
         $roles = $q->orderBy('nombre_completo')->paginate(25);
 
-        $secciones = config('erp.secciones');
+        $secciones = SeccionService::disponiblesPara($request->user());
 
         return view('roles.index', compact('roles', 'secciones'));
     }
@@ -59,17 +64,16 @@ class RolDescansoController extends Controller
     /**
      * Muestra el formulario de asignación individual (con búsqueda de empleado).
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\View\View
+     * @return View
      */
     public function create(Request $request)
     {
         $empleados = [];
         if ($termino = $request->input('termino')) {
-            $empleados = EmpleadoService::listar(null, $termino, 50);
+            $empleados = EmpleadoService::listar(null, $termino, 50, SeccionService::permitidas($request->user()));
         }
 
-        $secciones = config('erp.secciones');
+        $secciones = SeccionService::disponiblesPara($request->user());
 
         return view('roles.create', compact('empleados', 'secciones'));
     }
@@ -77,8 +81,7 @@ class RolDescansoController extends Controller
     /**
      * Almacena una asignación individual de rol.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function store(Request $request)
     {
@@ -90,13 +93,15 @@ class RolDescansoController extends Controller
             return back()->withInput()->withErrors(['clave' => 'Número de empleado no encontrado.']);
         }
 
+        SeccionService::autorizar($request->user(), $empleado['seccion']);
+
         RolDescanso::updateOrCreate(
             ['clave' => $data['clave'], 'activo' => true],
             array_merge($data, [
                 'nombre_completo' => $empleado['nombre_completo'],
-                'area'             => $empleado['area'],
-                'cargo'            => $empleado['cargo'],
-                'seccion'          => $empleado['seccion'],
+                'area' => $empleado['area'],
+                'cargo' => $empleado['cargo'],
+                'seccion' => $empleado['seccion'],
             ])
         );
 
@@ -106,26 +111,36 @@ class RolDescansoController extends Controller
     /**
      * Muestra el formulario de edición de un rol.
      *
-     * @param  \App\Models\RolDescanso  $rol
-     * @return \Illuminate\View\View
+     * @return View
      */
-    public function edit(RolDescanso $rol)
+    public function edit(Request $request, RolDescanso $rol)
     {
+        SeccionService::autorizar($request->user(), $rol->seccion);
+
         return view('roles.edit', compact('rol'));
     }
 
     /**
      * Actualiza un rol existente.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\RolDescanso  $rol
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function update(Request $request, RolDescanso $rol)
     {
+        SeccionService::autorizar($request->user(), $rol->seccion);
         $data = $this->validarIndividual($request);
+        $empleado = EmpleadoService::buscarPorClave($data['clave']);
+        if (! $empleado) {
+            return back()->withInput()->withErrors(['clave' => 'Número de empleado no encontrado.']);
+        }
+        SeccionService::autorizar($request->user(), $empleado['seccion']);
 
-        $rol->update($data);
+        $rol->update(array_merge($data, [
+            'nombre_completo' => $empleado['nombre_completo'],
+            'area' => $empleado['area'],
+            'cargo' => $empleado['cargo'],
+            'seccion' => $empleado['seccion'],
+        ]));
 
         return redirect()->route('roles.index')->with('success', 'Rol actualizado.');
     }
@@ -133,11 +148,11 @@ class RolDescansoController extends Controller
     /**
      * Elimina (soft delete) una asignación de rol.
      *
-     * @param  \App\Models\RolDescanso  $rol
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
-    public function destroy(RolDescanso $rol)
+    public function destroy(Request $request, RolDescanso $rol)
     {
+        SeccionService::autorizar($request->user(), $rol->seccion);
         $rol->delete();
 
         return redirect()->route('roles.index')->with('success', 'Rol eliminado.');
@@ -146,18 +161,17 @@ class RolDescansoController extends Controller
     /**
      * Descarga la plantilla Excel para carga masiva.
      *
-     * @return \Symfony\Component\HttpFoundation\BinaryFileResponse
+     * @return BinaryFileResponse
      */
     public function plantilla()
     {
-        return Excel::download(new \App\Exports\RolesDescansoPlantilla, 'plantilla_roles_descanso.xlsx');
+        return Excel::download(new RolesDescansoPlantilla, 'plantilla_roles_descanso.xlsx');
     }
 
     /**
      * Procesa la carga masiva de roles desde un archivo Excel.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function importar(Request $request)
     {
@@ -166,54 +180,40 @@ class RolDescansoController extends Controller
         ]);
 
         try {
-            Excel::import(new RolesDescansoImport, $request->file('archivo'));
+            $importacion = new RolesDescansoImport(SeccionService::permitidas($request->user()));
+            Excel::import($importacion, $request->file('archivo'));
+
+            if ($importacion->failures()->isNotEmpty()) {
+                $msj = $importacion->failures()
+                    ->map(fn ($f) => "Fila {$f->row()}: ".implode(', ', $f->errors()))
+                    ->implode(' | ');
+
+                return back()->withErrors(['archivo' => "La carga terminó con filas rechazadas. {$msj}"]);
+            }
 
             return redirect()->route('roles.index')->with('success', 'Carga masiva procesada correctamente.');
-        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+        } catch (ValidationException $e) {
             $errores = $e->failures();
-            $msj = collect($errores)->map(fn ($f) => "Fila {$f->row()}: " . implode(', ', $f->errors()))->implode(' | ');
+            $msj = collect($errores)->map(fn ($f) => "Fila {$f->row()}: ".implode(', ', $f->errors()))->implode(' | ');
 
             return back()->withErrors(['archivo' => $msj]);
         } catch (\Throwable $e) {
-            return back()->withErrors(['archivo' => 'Error al procesar el archivo: ' . $e->getMessage()]);
+            return back()->withErrors(['archivo' => 'Error al procesar el archivo: '.$e->getMessage()]);
         }
     }
 
     /**
      * Valida los datos de asignación individual.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return array
      */
     private function validarIndividual(Request $request): array
     {
         return $request->validate([
-            'clave'          => ['required', 'integer'],
-            'dias_trabajo'   => ['required', 'integer', 'min:1'],
-            'dias_descanso'  => ['required', 'integer', 'min:0'],
-            'fecha_inicio'   => ['nullable', 'date'],
-            'fecha_fin'      => ['nullable', 'date', 'after_or_equal:fecha_inicio'],
-            'activo'         => ['boolean'],
+            'clave' => ['required', 'integer'],
+            'dias_trabajo' => ['required', 'integer', 'min:1'],
+            'dias_descanso' => ['required', 'integer', 'min:0'],
+            'fecha_inicio' => ['nullable', 'date'],
+            'fecha_fin' => ['nullable', 'date', 'after_or_equal:fecha_inicio'],
+            'activo' => ['boolean'],
         ]);
-    }
-
-    /**
-     * Devuelve las secciones permitidas para el usuario, o null si puede ver todas.
-     *
-     * @param  \App\Models\Usuario  $user
-     * @return array|null
-     */
-    private function seccionesPermitidas($user): ?array
-    {
-        if ($user->esAdmin()) {
-            return null; // admin ve todas
-        }
-
-        $secciones = $user->perfil->secciones ?? [];
-        if (empty($secciones)) {
-            return null; // perfil sin restricción ve todas
-        }
-
-        return $secciones;
     }
 }

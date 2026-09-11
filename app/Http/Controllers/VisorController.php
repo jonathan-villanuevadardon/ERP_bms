@@ -2,8 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\SeccionService;
 use App\Services\VisorService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Illuminate\View\View;
 
 /**
  * Controlador "VisorController".
@@ -17,17 +21,20 @@ class VisorController extends Controller
     /**
      * Muestra el visor con filtro opcional por sección.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\View\View
+     * @return View
      */
     public function index(Request $request)
     {
-        $seccion = $request->input('seccion');
-        $filas = VisorService::cumplimiento($seccion);
+        $secciones = SeccionService::disponiblesPara($request->user());
+        $filtros = $request->validate([
+            'seccion' => ['nullable', Rule::in($secciones)],
+            'clave' => ['nullable', 'integer', 'min:1'],
+        ]);
+        $seccion = $filtros['seccion'] ?? null;
+        $clave = isset($filtros['clave']) ? (int) $filtros['clave'] : null;
+        $filas = VisorService::cumplimiento($seccion, $clave, SeccionService::permitidas($request->user()));
 
-        $secciones = config('erp.secciones');
-
-        return view('visor.index', compact('filas', 'secciones', 'seccion'));
+        return view('visor.index', compact('filas', 'secciones', 'seccion', 'clave'));
     }
 
     /**
@@ -36,10 +43,9 @@ class VisorController extends Controller
      * Solo accesible por el administrador (botón de emergencia). Se ejecuta el
      * SP sp_refrescar_hechos_asistencia de forma incremental.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
-    public function refrescar(\Illuminate\Http\Request $request)
+    public function refrescar(Request $request)
     {
         // Doble verificación: solo el administrador puede disparar el SP.
         if (! $request->user() || ! $request->user()->esAdmin()) {

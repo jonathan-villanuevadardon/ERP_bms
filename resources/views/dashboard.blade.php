@@ -67,9 +67,21 @@
         </div>
     </div>
     @endif
+    @if($user->esAdmin() || $user->perfil->puede_gestionar_incapacidades)
+    <div class="col-md-4 col-lg-3"><div class="card shadow-sm h-100"><div class="card-body">
+        <h5 class="card-title"><i class="bi bi-hospital"></i> Incapacidades</h5><p class="card-text text-muted small">Gestiona incapacidades IMSS y sus folios.</p>
+        <a href="{{ route('incapacidades.index') }}" class="btn btn-sm btn-outline-dark">Ir al módulo</a>
+    </div></div></div>
+    @endif
+    @if($user->esAdmin() || $user->perfil->puede_ver_lista_asistencia)
+    <div class="col-md-4 col-lg-3"><div class="card shadow-sm h-100"><div class="card-body">
+        <h5 class="card-title"><i class="bi bi-calendar-check"></i> Lista de asistencia</h5><p class="card-text text-muted small">Revisa el estatus diario que alimentará nómina.</p>
+        <a href="{{ route('lista_asistencia.index') }}" class="btn btn-sm btn-outline-dark">Consultar</a>
+    </div></div></div>
+    @endif
 </div>
 
-@if($user->esAdmin())
+@if($user->esAdmin() || $user->perfil->puede_aprobar)
 <div class="card shadow-sm mt-4 border-warning">
     <div class="card-body">
         <h5 class="card-title text-warning"><i class="bi bi-bell"></i> Pendientes de aprobación</h5>
@@ -78,6 +90,11 @@
                 <div class="fs-4">{{ $pendientesDescansos }}</div>
                 <small class="text-muted">Descansos fijos</small>
                 <div class="mt-1"><a href="{{ route('descansos.pendientes') }}" class="btn btn-sm btn-outline-warning">Revisar</a></div>
+            </div>
+            <div class="col">
+                <div class="fs-4">{{ $pendientesIncapacidades }}</div>
+                <small class="text-muted">Incapacidades</small>
+                <div class="mt-1"><a href="{{ route('incapacidades.pendientes') }}" class="btn btn-sm btn-outline-warning">Revisar</a></div>
             </div>
             <div class="col">
                 <div class="fs-4">{{ $pendientesVacaciones }}</div>

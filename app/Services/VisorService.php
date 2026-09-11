@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
-use App\Models\RolDescanso;
 use App\Models\HechoAsistencia;
+use App\Models\RolDescanso;
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -27,7 +29,7 @@ class VisorService
      * Inserta solo los días que aún no existen, respetando la data viva del
      * checador (asistencias que se cargan con retraso).
      *
-     * @return int  días nuevos insertados tras el refresco
+     * @return int días nuevos insertados tras el refresco
      */
     public static function refrescarHechos(): int
     {
@@ -44,13 +46,15 @@ class VisorService
     /**
      * Genera el detalle de cumplimiento por empleado.
      *
-     * @param  string|null  $seccion   filtrar por sección (null = todas)
-     * @return \Illuminate\Support\Collection
+     * @param  string|null  $seccion  filtrar por sección (null = todas)
+     * @return Collection
      */
-    public static function cumplimiento(?string $seccion = null)
+    public static function cumplimiento(?string $seccion = null, ?int $clave = null, ?array $seccionesPermitidas = null)
     {
         $roles = RolDescanso::where('activo', true)
             ->when($seccion, fn ($q) => $q->where('seccion', $seccion))
+            ->when($clave, fn ($q) => $q->where('clave', $clave))
+            ->when($seccionesPermitidas !== null, fn ($q) => $q->whereIn('seccion', $seccionesPermitidas))
             ->get();
 
         return $roles->map(function ($rol) {
@@ -58,11 +62,13 @@ class VisorService
             $desde = $rol->fecha_inicio ? $rol->fecha_inicio->toDateString() : null;
             $hasta = $rol->fecha_fin ? $rol->fecha_fin->toDateString() : null;
 
-            // Días trabajados totales en el periodo del rol.
-            $diasTrabajados = HechoAsistencia::where('clave', $rol->clave)
+            $fechasTrabajadas = HechoAsistencia::where('clave', $rol->clave)
                 ->when($desde, fn ($q) => $q->where('day_f', '>=', $desde))
                 ->when($hasta, fn ($q) => $q->where('day_f', '<=', $hasta))
-                ->count();
+                ->orderBy('day_f')
+                ->pluck('day_f')
+                ->map(fn ($fecha) => CarbonImmutable::parse($fecha)->startOfDay());
+            $diasTrabajados = $fechasTrabajadas->count();
 
             // Días de descanso esperados según el rol.
             $ciclo = $rol->dias_trabajo + $rol->dias_descanso;
@@ -70,13 +76,18 @@ class VisorService
                 ? (int) floor($diasTrabajados / $rol->dias_trabajo) * $rol->dias_descanso
                 : 0;
 
-            // Razón trabajado/descanso real vs esperado (indicador de cumplimiento).
-            // cumple = el empleado NO excede el bloque de trabajo sin descanso.
-            $sobreTrabajo = $rol->dias_trabajo > 0
-                ? ($diasTrabajados % $rol->dias_trabajo)
-                : 0;
+            $bloqueActual = 0;
+            $bloqueMaximo = 0;
+            $anterior = null;
+            foreach ($fechasTrabajadas as $fecha) {
+                $bloqueActual = $anterior && $anterior->diffInDays($fecha) === 1
+                    ? $bloqueActual + 1
+                    : 1;
+                $bloqueMaximo = max($bloqueMaximo, $bloqueActual);
+                $anterior = $fecha;
+            }
 
-            $cumple = $sobreTrabajo < $rol->dias_trabajo; // bloque actual aún en curso es válido
+            $cumple = $rol->dias_trabajo > 0 && $bloqueMaximo <= $rol->dias_trabajo;
 
             return [
                 'clave' => $rol->clave,
@@ -88,7 +99,8 @@ class VisorService
                 'dias_descanso_rol' => $rol->dias_descanso,
                 'dias_trabajados' => $diasTrabajados,
                 'dias_descanso_esperados' => $diasDescansoEsperados,
-                'bloque_actual' => $sobreTrabajo,
+                'bloque_actual' => $bloqueActual,
+                'bloque_maximo' => $bloqueMaximo,
                 'cumple' => $cumple,
             ];
         })->sortBy('nombre_completo')->values();

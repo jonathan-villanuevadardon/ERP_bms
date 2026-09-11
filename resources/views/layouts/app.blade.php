@@ -45,9 +45,19 @@
                         <a class="nav-link" href="{{ route('permisos.index') }}">Permisos</a>
                     </li>
                     @endif
+                    @if(auth()->user()->esAdmin() || auth()->user()->perfil->puede_gestionar_incapacidades)
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('incapacidades.index') }}">Incapacidades</a>
+                    </li>
+                    @endif
                     @if(auth()->user()->esAdmin() || auth()->user()->perfil->puede_ver_visor)
                     <li class="nav-item">
                         <a class="nav-link" href="{{ route('visor.index') }}">Visor</a>
+                    </li>
+                    @endif
+                    @if(auth()->user()->esAdmin() || auth()->user()->perfil->puede_ver_lista_asistencia)
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('lista_asistencia.index') }}">Lista de Asistencia</a>
                     </li>
                     @endif
                     @if(auth()->user()->esAdmin())

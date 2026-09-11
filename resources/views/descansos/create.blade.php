@@ -52,8 +52,8 @@
                     <input type="date" name="fecha_inicio" class="form-control" required>
                 </div>
                 <div class="col-md-6 mb-3">
-                    <label class="form-label">Fecha fin (opcional)</label>
-                    <input type="date" name="fecha_fin" class="form-control">
+                    <label class="form-label">Fecha fin</label>
+                    <input type="date" name="fecha_fin" class="form-control" required>
                 </div>
             </div>
             <div class="mb-3">

@@ -5,7 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Permiso;
 use App\Models\PermisoPendiente;
 use App\Services\EmpleadoService;
+use App\Services\SeccionService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
 
 /**
  * Controlador "PermisoController".
@@ -22,11 +27,12 @@ class PermisoController extends Controller
     /**
      * Lista los permisos registrados.
      *
-     * @return \Illuminate\View\View
+     * @return View
      */
-    public function index()
+    public function index(Request $request)
     {
-        $permisos = Permiso::orderBy('fecha_inicio', 'desc')->paginate(25);
+        $permisos = SeccionService::aplicar(Permiso::query(), $request->user())
+            ->orderBy('fecha_inicio', 'desc')->paginate(25);
 
         return view('permisos.index', compact('permisos'));
     }
@@ -34,14 +40,13 @@ class PermisoController extends Controller
     /**
      * Muestra el formulario para agregar un permiso.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\View\View
+     * @return View
      */
     public function create(Request $request)
     {
         $empleados = [];
         if ($termino = $request->input('termino')) {
-            $empleados = EmpleadoService::listar(null, $termino, 50);
+            $empleados = EmpleadoService::listar(null, $termino, 50, SeccionService::permitidas($request->user()));
         }
 
         return view('permisos.create', compact('empleados'));
@@ -53,8 +58,7 @@ class PermisoController extends Controller
      * Si es "con_goce" se envía a aprobación; si es "sin_goce" se registra
      * directo en "permisos".
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function store(Request $request)
     {
@@ -65,20 +69,22 @@ class PermisoController extends Controller
             return back()->withInput()->withErrors(['clave' => 'Número de empleado no encontrado.']);
         }
 
+        SeccionService::autorizar($request->user(), $empleado['seccion']);
+
         $base = [
-            'clave'           => $data['clave'],
+            'clave' => $data['clave'],
             'nombre_completo' => $empleado['nombre_completo'],
-            'area'            => $empleado['area'],
-            'seccion'         => $empleado['seccion'],
-            'fecha_inicio'    => $data['fecha_inicio'],
-            'fecha_fin'       => $data['fecha_fin'] ?? null,
-            'motivo'          => $data['motivo'] ?? null,
+            'area' => $empleado['area'],
+            'seccion' => $empleado['seccion'],
+            'fecha_inicio' => $data['fecha_inicio'],
+            'fecha_fin' => $data['fecha_fin'] ?? null,
+            'motivo' => $data['motivo'] ?? null,
         ];
 
         if ($data['tipo'] === 'con_goce') {
             PermisoPendiente::create(array_merge($base, [
-                'tipo'       => 'con_goce',
-                'estado'     => 'pendiente',
+                'tipo' => 'con_goce',
+                'estado' => 'pendiente',
                 'creado_por' => $request->user()->id,
             ]));
 
@@ -94,11 +100,11 @@ class PermisoController extends Controller
     /**
      * Buzón de aprobación de permisos con goce pendientes.
      *
-     * @return \Illuminate\View\View
+     * @return View
      */
-    public function pendientes()
+    public function pendientes(Request $request)
     {
-        $pendientes = PermisoPendiente::where('estado', 'pendiente')
+        $pendientes = SeccionService::aplicar(PermisoPendiente::where('estado', 'pendiente'), $request->user())
             ->orderBy('fecha_inicio')
             ->get();
 
@@ -108,32 +114,28 @@ class PermisoController extends Controller
     /**
      * Muestra el formulario de edición de un permiso pendiente.
      *
-     * @param  \App\Models\PermisoPendiente  $pendiente
-     * @return \Illuminate\View\View
+     * @return View
      */
-    public function editarPendiente(PermisoPendiente $pendiente)
+    public function editarPendiente(Request $request, PermisoPendiente $pendiente)
     {
+        $this->autorizarPendiente($request, $pendiente);
+
         return view('permisos.editar_pendiente', compact('pendiente'));
     }
 
     /**
      * Actualiza un permiso pendiente (solo antes de aprobarse).
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\PermisoPendiente  $pendiente
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function actualizarPendiente(Request $request, PermisoPendiente $pendiente)
     {
-        if ($pendiente->estado !== 'pendiente') {
-            return back()->with('error', 'Solo se pueden modificar permisos pendientes.');
-        }
-
-        $data = $this->validar($request);
+        $this->autorizarPendiente($request, $pendiente);
+        $data = $this->validarEdicion($request);
         $pendiente->update([
             'fecha_inicio' => $data['fecha_inicio'],
-            'fecha_fin'    => $data['fecha_fin'] ?? null,
-            'motivo'       => $data['motivo'] ?? null,
+            'fecha_fin' => $data['fecha_fin'] ?? null,
+            'motivo' => $data['motivo'] ?? null,
         ]);
 
         return redirect()->route('permisos.pendientes')->with('success', 'Permiso actualizado.');
@@ -142,15 +144,11 @@ class PermisoController extends Controller
     /**
      * Elimina un permiso pendiente.
      *
-     * @param  \App\Models\PermisoPendiente  $pendiente
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
-    public function eliminarPendiente(PermisoPendiente $pendiente)
+    public function eliminarPendiente(Request $request, PermisoPendiente $pendiente)
     {
-        if ($pendiente->estado !== 'pendiente') {
-            return back()->with('error', 'Solo se puede eliminar un permiso pendiente.');
-        }
-
+        $this->autorizarPendiente($request, $pendiente);
         $pendiente->delete();
 
         return redirect()->route('permisos.pendientes')->with('success', 'Permiso eliminado.');
@@ -159,28 +157,25 @@ class PermisoController extends Controller
     /**
      * Aprueba un permiso con goce y lo copia a "permisos".
      *
-     * @param  \App\Models\PermisoPendiente  $pendiente
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
-    public function aprobar(PermisoPendiente $pendiente)
+    public function aprobar(Request $request, PermisoPendiente $pendiente)
     {
-        Permiso::create([
-            'clave'           => $pendiente->clave,
-            'nombre_completo' => $pendiente->nombre_completo,
-            'area'            => $pendiente->area,
-            'seccion'         => $pendiente->seccion,
-            'tipo'            => 'con_goce',
-            'fecha_inicio'    => $pendiente->fecha_inicio,
-            'fecha_fin'       => $pendiente->fecha_fin,
-            'motivo'          => $pendiente->motivo,
-            'pendiente_id'    => $pendiente->id,
-        ]);
+        SeccionService::autorizar($request->user(), $pendiente->seccion);
+        DB::transaction(function () use ($request, $pendiente) {
+            $registro = PermisoPendiente::whereKey($pendiente->id)->lockForUpdate()->firstOrFail();
+            if ($registro->estado !== 'pendiente') {
+                throw ValidationException::withMessages(['permiso' => 'La solicitud ya fue procesada.']);
+            }
 
-        $pendiente->update([
-            'estado'       => 'aprobado',
-            'aprobado_por' => auth()->id(),
-            'aprobado_en'  => now(),
-        ]);
+            Permiso::create([
+                'clave' => $registro->clave, 'nombre_completo' => $registro->nombre_completo,
+                'area' => $registro->area, 'seccion' => $registro->seccion, 'tipo' => 'con_goce',
+                'fecha_inicio' => $registro->fecha_inicio, 'fecha_fin' => $registro->fecha_fin,
+                'motivo' => $registro->motivo, 'pendiente_id' => $registro->id,
+            ]);
+            $registro->update(['estado' => 'aprobado', 'aprobado_por' => $request->user()->id, 'aprobado_en' => now()]);
+        });
 
         return redirect()->route('permisos.pendientes')->with('success', 'Permiso aprobado.');
     }
@@ -188,34 +183,52 @@ class PermisoController extends Controller
     /**
      * Rechaza un permiso con goce pendiente.
      *
-     * @param  \App\Models\PermisoPendiente  $pendiente
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
-    public function rechazar(PermisoPendiente $pendiente)
+    public function rechazar(Request $request, PermisoPendiente $pendiente)
     {
-        $pendiente->update([
-            'estado'       => 'rechazado',
-            'aprobado_por' => auth()->id(),
-            'aprobado_en'  => now(),
+        SeccionService::autorizar($request->user(), $pendiente->seccion);
+        $actualizados = PermisoPendiente::whereKey($pendiente->id)->where('estado', 'pendiente')->update([
+            'estado' => 'rechazado',
+            'aprobado_por' => $request->user()->id,
+            'aprobado_en' => now(),
         ]);
+
+        if ($actualizados === 0) {
+            return back()->with('error', 'La solicitud ya fue procesada.');
+        }
 
         return redirect()->route('permisos.pendientes')->with('success', 'Permiso rechazado.');
     }
 
     /**
      * Valida los datos de un permiso.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return array
      */
     private function validar(Request $request): array
     {
         return $request->validate([
-            'clave'        => ['required', 'integer'],
-            'tipo'         => ['required', 'in:con_goce,sin_goce'],
+            'clave' => ['required', 'integer'],
+            'tipo' => ['required', 'in:con_goce,sin_goce'],
             'fecha_inicio' => ['required', 'date'],
-            'fecha_fin'    => ['nullable', 'date', 'after_or_equal:fecha_inicio'],
-            'motivo'       => ['nullable', 'string', 'max:500'],
+            'fecha_fin' => ['nullable', 'date', 'after_or_equal:fecha_inicio'],
+            'motivo' => ['nullable', 'string', 'max:500'],
         ]);
+    }
+
+    private function validarEdicion(Request $request): array
+    {
+        return $request->validate([
+            'fecha_inicio' => ['required', 'date_format:Y-m-d'],
+            'fecha_fin' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:fecha_inicio'],
+            'motivo' => ['nullable', 'string', 'max:500'],
+        ]);
+    }
+
+    private function autorizarPendiente(Request $request, PermisoPendiente $pendiente): void
+    {
+        SeccionService::autorizar($request->user(), $pendiente->seccion);
+        if ($pendiente->estado !== 'pendiente') {
+            abort(409, 'Solo se pueden modificar permisos pendientes.');
+        }
     }
 }

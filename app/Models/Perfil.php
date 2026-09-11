@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -38,6 +39,9 @@ class Perfil extends Model
         'puede_aprobar',
         'es_admin',
         'puede_ver_visor',
+        'puede_cargas_masivas',
+        'puede_gestionar_incapacidades',
+        'puede_ver_lista_asistencia',
         'secciones',
     ];
 
@@ -55,12 +59,15 @@ class Perfil extends Model
         'puede_aprobar' => 'boolean',
         'es_admin' => 'boolean',
         'puede_ver_visor' => 'boolean',
+        'puede_cargas_masivas' => 'boolean',
+        'puede_gestionar_incapacidades' => 'boolean',
+        'puede_ver_lista_asistencia' => 'boolean',
     ];
 
     /**
      * Relación: usuarios que tienen este perfil.
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * @return HasMany
      */
     public function usuarios()
     {
@@ -72,9 +79,6 @@ class Perfil extends Model
      *
      * Un perfil sin restricción de secciones (secciones vacío/null) puede ver
      * todas. De lo contrario, solo las listadas en su arreglo "secciones".
-     *
-     * @param  string|null  $seccion
-     * @return bool
      */
     public function puedeVerSeccion(?string $seccion): bool
     {

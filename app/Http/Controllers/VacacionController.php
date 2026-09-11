@@ -5,7 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Vacacion;
 use App\Models\VacacionPendiente;
 use App\Services\EmpleadoService;
+use App\Services\SeccionService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
 
 /**
  * Controlador "VacacionController".
@@ -20,11 +25,12 @@ class VacacionController extends Controller
     /**
      * Lista las vacaciones aprobadas.
      *
-     * @return \Illuminate\View\View
+     * @return View
      */
-    public function index()
+    public function index(Request $request)
     {
-        $vacaciones = Vacacion::orderBy('fecha_inicio', 'desc')->paginate(25);
+        $vacaciones = SeccionService::aplicar(Vacacion::query(), $request->user())
+            ->orderBy('fecha_inicio', 'desc')->paginate(25);
 
         return view('vacaciones.index', compact('vacaciones'));
     }
@@ -32,14 +38,13 @@ class VacacionController extends Controller
     /**
      * Muestra el formulario para agregar vacaciones.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\View\View
+     * @return View
      */
     public function create(Request $request)
     {
         $empleados = [];
         if ($termino = $request->input('termino')) {
-            $empleados = EmpleadoService::listar(null, $termino, 50);
+            $empleados = EmpleadoService::listar(null, $termino, 50, SeccionService::permitidas($request->user()));
         }
 
         return view('vacaciones.create', compact('empleados'));
@@ -48,8 +53,7 @@ class VacacionController extends Controller
     /**
      * Guarda una solicitud de vacaciones en el buzón de aprobación.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function store(Request $request)
     {
@@ -60,16 +64,18 @@ class VacacionController extends Controller
             return back()->withInput()->withErrors(['clave' => 'Número de empleado no encontrado.']);
         }
 
+        SeccionService::autorizar($request->user(), $empleado['seccion']);
+
         VacacionPendiente::create([
-            'clave'           => $data['clave'],
+            'clave' => $data['clave'],
             'nombre_completo' => $empleado['nombre_completo'],
-            'area'            => $empleado['area'],
-            'seccion'         => $empleado['seccion'],
-            'fecha_inicio'    => $data['fecha_inicio'],
-            'fecha_fin'       => $data['fecha_fin'],
-            'observaciones'   => $data['observaciones'] ?? null,
-            'estado'          => 'pendiente',
-            'creado_por'      => $request->user()->id,
+            'area' => $empleado['area'],
+            'seccion' => $empleado['seccion'],
+            'fecha_inicio' => $data['fecha_inicio'],
+            'fecha_fin' => $data['fecha_fin'],
+            'observaciones' => $data['observaciones'] ?? null,
+            'estado' => 'pendiente',
+            'creado_por' => $request->user()->id,
         ]);
 
         return redirect()->route('vacaciones.pendientes')
@@ -79,11 +85,11 @@ class VacacionController extends Controller
     /**
      * Buzón de aprobación de vacaciones pendientes.
      *
-     * @return \Illuminate\View\View
+     * @return View
      */
-    public function pendientes()
+    public function pendientes(Request $request)
     {
-        $pendientes = VacacionPendiente::where('estado', 'pendiente')
+        $pendientes = SeccionService::aplicar(VacacionPendiente::where('estado', 'pendiente'), $request->user())
             ->orderBy('fecha_inicio')
             ->get();
 
@@ -93,31 +99,27 @@ class VacacionController extends Controller
     /**
      * Muestra el formulario de edición de una solicitud pendiente.
      *
-     * @param  \App\Models\VacacionPendiente  $pendiente
-     * @return \Illuminate\View\View
+     * @return View
      */
-    public function editarPendiente(VacacionPendiente $pendiente)
+    public function editarPendiente(Request $request, VacacionPendiente $pendiente)
     {
+        $this->autorizarPendiente($request, $pendiente);
+
         return view('vacaciones.editar_pendiente', compact('pendiente'));
     }
 
     /**
      * Actualiza una solicitud pendiente (solo antes de aprobarse).
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\VacacionPendiente  $pendiente
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function actualizarPendiente(Request $request, VacacionPendiente $pendiente)
     {
-        if ($pendiente->estado !== 'pendiente') {
-            return back()->with('error', 'Solo se pueden modificar solicitudes pendientes.');
-        }
-
-        $data = $this->validar($request);
+        $this->autorizarPendiente($request, $pendiente);
+        $data = $this->validarEdicion($request);
         $pendiente->update([
-            'fecha_inicio'  => $data['fecha_inicio'],
-            'fecha_fin'     => $data['fecha_fin'],
+            'fecha_inicio' => $data['fecha_inicio'],
+            'fecha_fin' => $data['fecha_fin'],
             'observaciones' => $data['observaciones'] ?? null,
         ]);
 
@@ -127,15 +129,11 @@ class VacacionController extends Controller
     /**
      * Elimina una solicitud pendiente.
      *
-     * @param  \App\Models\VacacionPendiente  $pendiente
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
-    public function eliminarPendiente(VacacionPendiente $pendiente)
+    public function eliminarPendiente(Request $request, VacacionPendiente $pendiente)
     {
-        if ($pendiente->estado !== 'pendiente') {
-            return back()->with('error', 'Solo se puede eliminar una solicitud pendiente.');
-        }
-
+        $this->autorizarPendiente($request, $pendiente);
         $pendiente->delete();
 
         return redirect()->route('vacaciones.pendientes')->with('success', 'Solicitud eliminada.');
@@ -144,27 +142,25 @@ class VacacionController extends Controller
     /**
      * Aprueba una solicitud de vacaciones y la copia a "vacaciones".
      *
-     * @param  \App\Models\VacacionPendiente  $pendiente
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
-    public function aprobar(VacacionPendiente $pendiente)
+    public function aprobar(Request $request, VacacionPendiente $pendiente)
     {
-        Vacacion::create([
-            'clave'           => $pendiente->clave,
-            'nombre_completo' => $pendiente->nombre_completo,
-            'area'            => $pendiente->area,
-            'seccion'         => $pendiente->seccion,
-            'fecha_inicio'    => $pendiente->fecha_inicio,
-            'fecha_fin'       => $pendiente->fecha_fin,
-            'observaciones'   => $pendiente->observaciones,
-            'pendiente_id'    => $pendiente->id,
-        ]);
+        SeccionService::autorizar($request->user(), $pendiente->seccion);
+        DB::transaction(function () use ($request, $pendiente) {
+            $registro = VacacionPendiente::whereKey($pendiente->id)->lockForUpdate()->firstOrFail();
+            if ($registro->estado !== 'pendiente') {
+                throw ValidationException::withMessages(['vacacion' => 'La solicitud ya fue procesada.']);
+            }
 
-        $pendiente->update([
-            'estado'       => 'aprobado',
-            'aprobado_por' => auth()->id(),
-            'aprobado_en'  => now(),
-        ]);
+            Vacacion::create([
+                'clave' => $registro->clave, 'nombre_completo' => $registro->nombre_completo,
+                'area' => $registro->area, 'seccion' => $registro->seccion,
+                'fecha_inicio' => $registro->fecha_inicio, 'fecha_fin' => $registro->fecha_fin,
+                'observaciones' => $registro->observaciones, 'pendiente_id' => $registro->id,
+            ]);
+            $registro->update(['estado' => 'aprobado', 'aprobado_por' => $request->user()->id, 'aprobado_en' => now()]);
+        });
 
         return redirect()->route('vacaciones.pendientes')->with('success', 'Vacaciones aprobadas.');
     }
@@ -172,33 +168,51 @@ class VacacionController extends Controller
     /**
      * Rechaza una solicitud de vacaciones pendiente.
      *
-     * @param  \App\Models\VacacionPendiente  $pendiente
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
-    public function rechazar(VacacionPendiente $pendiente)
+    public function rechazar(Request $request, VacacionPendiente $pendiente)
     {
-        $pendiente->update([
-            'estado'       => 'rechazado',
-            'aprobado_por' => auth()->id(),
-            'aprobado_en'  => now(),
+        SeccionService::autorizar($request->user(), $pendiente->seccion);
+        $actualizados = VacacionPendiente::whereKey($pendiente->id)->where('estado', 'pendiente')->update([
+            'estado' => 'rechazado',
+            'aprobado_por' => $request->user()->id,
+            'aprobado_en' => now(),
         ]);
+
+        if ($actualizados === 0) {
+            return back()->with('error', 'La solicitud ya fue procesada.');
+        }
 
         return redirect()->route('vacaciones.pendientes')->with('success', 'Vacaciones rechazadas.');
     }
 
     /**
      * Valida los datos de vacaciones.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return array
      */
     private function validar(Request $request): array
     {
         return $request->validate([
-            'clave'         => ['required', 'integer'],
-            'fecha_inicio'  => ['required', 'date'],
-            'fecha_fin'     => ['required', 'date', 'after_or_equal:fecha_inicio'],
+            'clave' => ['required', 'integer'],
+            'fecha_inicio' => ['required', 'date'],
+            'fecha_fin' => ['required', 'date', 'after_or_equal:fecha_inicio'],
             'observaciones' => ['nullable', 'string', 'max:500'],
         ]);
+    }
+
+    private function validarEdicion(Request $request): array
+    {
+        return $request->validate([
+            'fecha_inicio' => ['required', 'date_format:Y-m-d'],
+            'fecha_fin' => ['required', 'date_format:Y-m-d', 'after_or_equal:fecha_inicio'],
+            'observaciones' => ['nullable', 'string', 'max:500'],
+        ]);
+    }
+
+    private function autorizarPendiente(Request $request, VacacionPendiente $pendiente): void
+    {
+        SeccionService::autorizar($request->user(), $pendiente->seccion);
+        if ($pendiente->estado !== 'pendiente') {
+            abort(409, 'Solo se pueden modificar solicitudes pendientes.');
+        }
     }
 }

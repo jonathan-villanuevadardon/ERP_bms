@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="mb-4">
-    <a href="{{ route('descansos.index') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Volver</a>
+    <a href="{{ (auth()->user()->esAdmin() || auth()->user()->perfil->puede_gestionar_descansos) ? route('descansos.index') : route('dashboard') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Volver</a>
     <h1 class="h3 mt-2">Aprobación de descansos fijos</h1>
 </div>
 
@@ -32,6 +32,7 @@
                     <td>{{ $p->fecha_fin?->format('d/m/Y') ?? '—' }}</td>
                     <td class="small text-muted">{{ Str::limit($p->observaciones, 40) }}</td>
                     <td class="text-end">
+                        @if(auth()->user()->esAdmin() || auth()->user()->perfil->puede_aprobar)
                         <form method="POST" action="{{ route('descansos.aprobar', $p) }}" class="d-inline">
                             @csrf
                             <button class="btn btn-sm btn-success">Aprobar</button>
@@ -40,6 +41,7 @@
                             @csrf
                             <button class="btn btn-sm btn-outline-danger">Rechazar</button>
                         </form>
+                        @endif
                     </td>
                 </tr>
                 @empty

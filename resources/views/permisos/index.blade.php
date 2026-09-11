@@ -6,11 +6,9 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="h3">Permisos</h1>
     <div>
-        @if(auth()->user()->esAdmin())
         <a href="{{ route('permisos.pendientes') }}" class="btn btn-outline-warning me-2">
-            <i class="bi bi-bell"></i> Aprobaciones
+            <i class="bi bi-bell"></i> Pendientes
         </a>
-        @endif
         <a href="{{ route('permisos.create') }}" class="btn btn-dark">
             <i class="bi bi-plus-lg"></i> Agregar permiso
         </a>

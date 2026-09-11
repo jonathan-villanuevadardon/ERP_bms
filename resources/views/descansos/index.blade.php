@@ -6,11 +6,12 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="h3">Descansos</h1>
     <div>
-        @if(auth()->user()->esAdmin())
-        <a href="{{ route('descansos.pendientes') }}" class="btn btn-outline-warning me-2">
-            <i class="bi bi-bell"></i> Aprobaciones
-        </a>
+        @if(auth()->user()->esAdmin() || auth()->user()->perfil->puede_cargas_masivas)
+        <a href="{{ route('descansos.importar') }}" class="btn btn-outline-success me-2"><i class="bi bi-file-earmark-excel"></i> Carga masiva</a>
         @endif
+        <a href="{{ route('descansos.pendientes') }}" class="btn btn-outline-warning me-2">
+            <i class="bi bi-bell"></i> Pendientes
+        </a>
         <a href="{{ route('descansos.create') }}" class="btn btn-dark">
             <i class="bi bi-plus-lg"></i> Agregar descanso
         </a>

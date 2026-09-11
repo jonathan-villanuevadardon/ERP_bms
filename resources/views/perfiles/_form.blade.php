@@ -7,8 +7,9 @@
         <input type="text" name="nombre" class="form-control" value="{{ old('nombre', $p?->nombre) }}" required>
     </div>
     <div class="col-md-6 mb-3">
-        <label class="form-label">Slug</label>
+        <label class="form-label">Identificador interno</label>
         <input type="text" name="slug" class="form-control" value="{{ old('slug', $p?->slug) }}" required>
+        <div class="form-text">Nombre corto sin espacios, por ejemplo: recursos-humanos.</div>
     </div>
 </div>
 <div class="mb-3">
@@ -39,11 +40,23 @@
             <input class="form-check-input" type="checkbox" name="puede_ver_visor" value="1" @checked(old('puede_ver_visor', $p?->puede_ver_visor ?? false))>
             <label class="form-check-label">Ver visor de cumplimiento</label>
         </div>
+        <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" name="puede_gestionar_incapacidades" value="1" @checked(old('puede_gestionar_incapacidades', $p?->puede_gestionar_incapacidades ?? false))>
+            <label class="form-check-label">Gestionar incapacidades</label>
+        </div>
+        <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" name="puede_ver_lista_asistencia" value="1" @checked(old('puede_ver_lista_asistencia', $p?->puede_ver_lista_asistencia ?? false))>
+            <label class="form-check-label">Ver lista de asistencia</label>
+        </div>
     </div>
     <div class="col-md-6">
         <div class="form-check mb-2">
             <input class="form-check-input" type="checkbox" name="puede_aprobar" value="1" @checked(old('puede_aprobar', $p?->puede_aprobar ?? false))>
             <label class="form-check-label">Puede aprobar</label>
+        </div>
+        <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" name="puede_cargas_masivas" value="1" @checked(old('puede_cargas_masivas', $p?->puede_cargas_masivas ?? false))>
+            <label class="form-check-label">Puede realizar cargas masivas</label>
         </div>
         <div class="form-check mb-2">
             <input class="form-check-input" type="checkbox" name="es_admin" value="1" @checked(old('es_admin', $p?->es_admin ?? false))>

@@ -14,7 +14,7 @@
             <thead class="table-dark">
                 <tr>
                     <th>Nombre</th>
-                    <th>Slug</th>
+                    <th>Identificador interno</th>
                     <th>Descripción</th>
                     <th>Asignar rol</th>
                     <th>Descansos</th>

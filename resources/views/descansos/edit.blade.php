@@ -22,6 +22,7 @@
                     <option value="por_periodo" @selected($descanso->tipo === 'por_periodo')>Por periodo</option>
                     <option value="fijo" @selected($descanso->tipo === 'fijo')>Fijo</option>
                 </select>
+                <div class="form-text">El tipo no puede cambiarse después del registro.</div>
             </div>
             <div class="row">
                 <div class="col-md-6 mb-3">
@@ -30,7 +31,7 @@
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Fecha fin</label>
-                    <input type="date" name="fecha_fin" class="form-control" value="{{ optional($descanso->fecha_fin)->format('Y-m-d') }}">
+                    <input type="date" name="fecha_fin" class="form-control" value="{{ optional($descanso->fecha_fin)->format('Y-m-d') }}" required>
                 </div>
             </div>
             <div class="mb-3">

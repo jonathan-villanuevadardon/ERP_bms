@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\Empleado;
 use App\Models\HechoAsistencia;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Collection;
 
 /**
  * Servicio "EmpleadoService".
@@ -20,9 +20,6 @@ class EmpleadoService
      *
      * Devuelve un array normalizado con las claves de dominio usadas por la
      * aplicación (minúsculas y coherentes), o null si no existe.
-     *
-     * @param  int  $clave
-     * @return array|null
      */
     public static function buscarPorClave(int $clave): ?array
     {
@@ -35,19 +32,36 @@ class EmpleadoService
     }
 
     /**
+     * Resuelve empleados en una sola consulta, indexados por clave.
+     *
+     * @param  array<int, int>  $claves
+     */
+    public static function buscarVarios(array $claves)
+    {
+        return Empleado::whereIn('clave', array_values(array_unique($claves)))
+            ->get()
+            ->mapWithKeys(function (Empleado $empleado) {
+                $normalizado = self::normalizar($empleado);
+
+                return [$normalizado['clave'] => $normalizado];
+            });
+    }
+
+    /**
      * Listar empleados con filtros opcionales (sección, término de búsqueda).
      *
-     * @param  string|null  $seccion
-     * @param  string|null  $termino
-     * @param  int  $limite
-     * @return \Illuminate\Support\Collection
+     * @return Collection
      */
-    public static function listar(?string $seccion = null, ?string $termino = null, int $limite = 100)
+    public static function listar(?string $seccion = null, ?string $termino = null, int $limite = 100, ?array $seccionesPermitidas = null)
     {
         $q = Empleado::query();
 
         if ($seccion) {
             $q->where('seccion', $seccion);
+        }
+
+        if ($seccionesPermitidas !== null) {
+            $q->whereIn('seccion', $seccionesPermitidas);
         }
 
         if ($termino) {
@@ -68,11 +82,11 @@ class EmpleadoService
             $dias = HechoAsistencia::where('clave', (int) $e->clave)->count();
 
             return [
-                'clave'           => (int) $e->clave,
+                'clave' => (int) $e->clave,
                 'nombre_completo' => trim((string) $e->Nombre_completo),
-                'cargo'           => trim((string) $e->categoria),
-                'area'            => trim((string) $e->dept_name),
-                'seccion'         => trim((string) $e->seccion),
+                'cargo' => trim((string) $e->categoria),
+                'area' => trim((string) $e->dept_name),
+                'seccion' => trim((string) $e->seccion),
                 'dias_trabajados' => $dias,
             ];
         });
@@ -83,10 +97,8 @@ class EmpleadoService
      *
      * Consulta la tabla de hechos (materializada) para un conteo rápido.
      *
-     * @param  int  $clave
      * @param  string|null  $desde  fecha 'Y-m-d' (opcional)
      * @param  string|null  $hasta  fecha 'Y-m-d' (opcional)
-     * @return int
      */
     public static function diasTrabajados(int $clave, ?string $desde = null, ?string $hasta = null): int
     {
@@ -104,9 +116,6 @@ class EmpleadoService
 
     /**
      * Normalizar una fila de la vista a claves de dominio coherentes.
-     *
-     * @param  \App\Models\Empleado  $e
-     * @return array
      */
     private static function normalizar(Empleado $e): array
     {
