@@ -15,13 +15,9 @@ yarn-error.log*
 .env.local
 .env.staging
 
-# ==== Archivos de carga / plantillas generadas en runtime ====
-storage/app/public/*
-storage/framework/cache/data/*
-storage/framework/sessions/*
-storage/framework/views/*
-storage/framework/testing/*
-storage/logs/*.log
+# ==== Runtime de Laravel ====
+# Cada directorio storage/* contiene su propio .gitignore para conservar la
+# estructura requerida sin versionar sesiones, caché, vistas ni logs.
 
 # ==== Claves / certificados ====
 *.key
@@ -45,7 +41,7 @@ auth.json
 docker-compose.yml
 docker-compose.override.yml
 
-# ==== Composer lock alternativo / dependencias locales ====
-composer.lock
+# ==== Dependencias locales ====
+# composer.lock SÍ se versiona en aplicaciones para despliegues reproducibles.
 phpunit.xml
 .review/

@@ -4,6 +4,7 @@ namespace App\Imports;
 
 use App\Models\RolDescanso;
 use App\Services\EmpleadoService;
+use Illuminate\Database\Eloquent\Model;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
@@ -45,7 +46,7 @@ class RolesDescansoImport implements ToModel, WithHeadingRow, WithValidation, Sk
      * @param  array  $row
      * @return \App\Models\RolDescanso|null
      */
-    public function model(array $row)
+    public function model(array $row): ?Model
     {
         $clave = (int) $row['numero_empleado'];
 

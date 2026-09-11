@@ -1,6 +1,6 @@
 # ERP BMS — Sistema de Gestión de Descansos, Vacaciones y Permisos
 
-Aplicación web en **Laravel 11 (MVC)** para alojarse en **Hostinger**, conectada a
+Aplicación web en **Laravel 12 (MVC)** para alojarse en **Hostinger**, conectada a
 **SQL Server** (Microsoft) en `nominarc4.duckdns.org` (base `ERPBMS`).
 
 ## Descripción general
@@ -53,9 +53,9 @@ routes/web.php              # Rutas del sistema
 
 ## Requisitos
 
-- PHP **8.2+** con extensiones **`pdo_sqlsrv`** y **`sqlsrv`** habilitadas
-  (Hostinger debe tenerlas; verificar en `phpinfo`). En su defecto, usar
-  `pdo_sqlsrv`.
+- PHP **8.3+** con extensiones **`pdo_sqlsrv`**, **`sqlsrv`**, **`gd`**,
+  **`zip`**, **`mbstring`**, **`dom`**, **`xml`**, **`xmlreader`**,
+  **`xmlwriter`** y **`simplexml`** habilitadas (verificar en `phpinfo`).
 - Composer.
 - Acceso de red al SQL Server en el puerto **1433**.
 
@@ -108,7 +108,7 @@ php artisan storage:link
    ```
 
    El scheduler ejecuta `erp:refrescar-hechos` **cada 5 horas**
-   (`->everyFiveHours()`). También existe el botón "Actualizar datos" en el
+   (`->cron('0 */5 * * *')`). También existe el botón "Actualizar datos" en el
    visor para refrescar bajo demanda.
 
 ## Seguridad / variables de entorno
@@ -147,4 +147,4 @@ y tablas del framework.
 
 ## Créditos
 
-Desarrollado como ERP modular para BMS RH sobre Laravel 11 + SQL Server.
+Desarrollado como ERP modular para BMS RH sobre Laravel 12 + SQL Server.

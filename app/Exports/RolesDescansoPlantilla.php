@@ -26,7 +26,7 @@ class RolesDescansoPlantilla implements FromCollection, WithHeadings, WithMappin
      *
      * @return \Illuminate\Support\Collection
      */
-    public function collection()
+    public function collection(): Collection
     {
         return new Collection([
             ['numero_empleado' => 116, 'dias_trabajo' => 10, 'dias_descanso' => 5, 'fecha_inicio' => '2026-01-01'],
@@ -54,7 +54,7 @@ class RolesDescansoPlantilla implements FromCollection, WithHeadings, WithMappin
      * @param  mixed  $row
      * @return array
      */
-    public function map($row): array
+    public function map(mixed $row): array
     {
         return [
             $row['numero_empleado'],

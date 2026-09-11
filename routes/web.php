@@ -121,7 +121,11 @@ Route::middleware(['auth', \App\Http\Middleware\VerificarPerfil::class])->group(
     |----------------------------------------------------------------------
     */
     Route::middleware(\App\Http\Middleware\RequiereAdmin::class)->group(function () {
-        Route::resource('perfiles', PerfilController::class);
-        Route::resource('usuarios', UsuarioController::class);
+        // Se especifica el parámetro singular para evitar que el inflector
+        // convierta "perfiles" incorrectamente en "perfile".
+        Route::resource('perfiles', PerfilController::class)
+            ->parameters(['perfiles' => 'perfil'])
+            ->except(['show']);
+        Route::resource('usuarios', UsuarioController::class)->except(['show']);
     });
 });

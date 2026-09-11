@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Schedule;
 |
 | Nota: en Hostinger, agregar en el CRON del panel:
 |   * * * * * php /ruta/a/artisan schedule:run
-| Laravel interpreta then->everyFiveHours() dentro del scheduler.
+| Laravel interpreta la expresión cron dentro del scheduler.
 */
 
-Schedule::command('erp:refrescar-hechos')->everyFiveHours();
+Schedule::command('erp:refrescar-hechos')->cron('0 */5 * * *');
