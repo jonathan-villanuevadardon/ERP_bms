@@ -106,15 +106,14 @@ php artisan storage:link
    respeta la "data viva" del checador (asistencias que se cargan con retraso
    o cuando el dispositivo recupera internet).
 
-3. Programar el refresco periódico en el CRON de Hostinger:
+3. Programar el refresco periódico como SQL Server Agent Job:
 
-   ```bash
-   * * * * * php /ruta/a/artisan schedule:run
-   ```
+   Ejecutar `database/sql/job_refrescar_hechos_asistencia.sql` conectado a la
+   instancia SQL Server. El job ejecuta `dbo.sp_refrescar_hechos_asistencia`
+   cada 5 horas. Ya no se necesita un cron de PHP para este refresco.
 
-   El scheduler ejecuta `erp:refrescar-hechos` **cada 5 horas**
-   (`->cron('0 */5 * * *')`). También existe el botón "Actualizar datos" en el
-   visor para refrescar bajo demanda.
+   El comando `erp:refrescar-hechos` y el botón de emergencia del visor se
+   conservan para ejecutar el procedimiento manualmente cuando sea necesario.
 
 ## Seguridad / variables de entorno
 

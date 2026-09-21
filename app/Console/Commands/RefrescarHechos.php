@@ -12,7 +12,7 @@ use Illuminate\Console\Command;
  * hechos de asistencia desde la vista VW_Listas_asistencia_unic. La carga es
  * INCREMENTAL: solo inserta los días nuevos (data viva del checador que llega
  * con retraso), sin borrar el historial ya procesado.
- * Puede ejecutarse manualmente o vía el programador (cron).
+ * Puede ejecutarse manualmente o desde SQL Server Agent mediante el SP.
  */
 class RefrescarHechos extends Command
 {

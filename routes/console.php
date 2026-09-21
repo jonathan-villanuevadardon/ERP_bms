@@ -1,18 +1,7 @@
 <?php
 
-use Illuminate\Support\Facades\Schedule;
-
 /*
-|--------------------------------------------------------------------------
-| Programación de tareas (cron)
-|--------------------------------------------------------------------------
-| Programa el refresco INCREMENTAL de la tabla de hechos de asistencia cada
-| 5 horas para absorber la "data viva" del checador (asistencias que llegan
-| con retraso o cuando el dispositivo recupera internet).
-|
-| Nota: en Hostinger, agregar en el CRON del panel:
-|   * * * * * php /ruta/a/artisan schedule:run
-| Laravel interpreta la expresión cron dentro del scheduler.
-*/
-
-Schedule::command('erp:refrescar-hechos')->cron('0 */5 * * *');
+ * El refresco periódico se ejecuta mediante SQL Server Agent.
+ * El comando `erp:refrescar-hechos` se conserva para ejecuciones manuales y
+ * para el botón de emergencia del visor; no requiere un cron de PHP.
+ */
