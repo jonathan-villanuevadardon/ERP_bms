@@ -32,14 +32,17 @@
                     <td>{{ $p->fecha_fin?->format('d/m/Y') ?? '—' }}</td>
                     <td class="small text-muted">{{ Str::limit($p->observaciones, 40) }}</td>
                     <td class="text-end">
+                        @if(auth()->user()->esAdmin() || auth()->user()->perfil->puede_gestionar_descansos)
+                        <a href="{{ route('descansos.editar_pendiente', $p) }}" class="btn btn-sm btn-outline-primary">Editar</a>
+                        @endif
                         @if(auth()->user()->esAdmin() || auth()->user()->perfil->puede_aprobar)
-                        <form method="POST" action="{{ route('descansos.aprobar', $p) }}" class="d-inline">
+                        <form method="POST" action="{{ route('descansos.aprobar', $p) }}" class="d-inline" onsubmit="return confirm('¿Aprobar este descanso fijo?')">
                             @csrf
-                            <button class="btn btn-sm btn-success">Aprobar</button>
+                            <button type="submit" class="btn btn-sm btn-success">Aprobar</button>
                         </form>
                         <form method="POST" action="{{ route('descansos.rechazar', $p) }}" class="d-inline" onsubmit="return confirm('¿Rechazar este descanso fijo?')">
                             @csrf
-                            <button class="btn btn-sm btn-outline-danger">Rechazar</button>
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Rechazar</button>
                         </form>
                         @endif
                     </td>

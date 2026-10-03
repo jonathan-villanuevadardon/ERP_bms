@@ -12,10 +12,11 @@
     <div class="card-body">
         <form method="GET" action="{{ route('roles.create') }}" class="row g-2">
             <div class="col-md-6">
-                <input type="text" name="termino" class="form-control" placeholder="Buscar por nombre, clave o cargo" value="{{ request('termino') }}">
+                <label for="termino" class="visually-hidden">Nombre, clave o cargo</label>
+                <input type="search" id="termino" name="termino" class="form-control" placeholder="Buscar por nombre, clave o cargo" value="{{ request('termino') }}">
             </div>
             <div class="col-md-2">
-                <button class="btn btn-outline-dark w-100">Buscar</button>
+                <button type="submit" class="btn btn-outline-dark w-100">Buscar</button>
             </div>
         </form>
     </div>
@@ -27,11 +28,11 @@
         <h5 class="card-title">Resultados de búsqueda</h5>
         <div class="list-group">
             @foreach($empleados as $e)
-            <a href="#" class="list-group-item list-group-item-action" onclick="seleccionar({{ $e['clave'] }}, '{{ addslashes($e['nombre_completo']) }}', '{{ addslashes($e['area']) }}', '{{ addslashes($e['cargo']) }}', '{{ addslashes($e['seccion']) }}'); return false;">
+            <button type="button" class="list-group-item list-group-item-action" onclick="seleccionar({{ $e['clave'] }}, @js($e['nombre_completo']), @js($e['area']), @js($e['cargo']), @js($e['seccion']))">
                 <strong>#{{ $e['clave'] }}</strong> — {{ $e['nombre_completo'] }}
                 <span class="text-muted small">({{ $e['area'] }} · {{ $e['cargo'] }} · {{ $e['seccion'] }})</span>
                 <span class="badge bg-info text-dark">Días trabajados: {{ $e['dias_trabajados'] }}</span>
-            </a>
+            </button>
             @endforeach
         </div>
     </div>
@@ -44,7 +45,7 @@
         <form method="POST" action="{{ route('roles.store') }}">
             @csrf
             <div class="mb-3">
-                <label class="form-label">Número de empleado (clave)</label>
+                <label for="clave" class="form-label">Número de empleado (clave)</label>
                 <input type="number" name="clave" id="clave" class="form-control" required>
             </div>
             <div class="mb-3" id="infoEmpleado" style="display:none;">
@@ -55,22 +56,22 @@
             </div>
             <div class="row">
                 <div class="col-md-6 mb-3">
-                    <label class="form-label">Días trabajados</label>
-                    <input type="number" name="dias_trabajo" class="form-control" min="1" required>
+                    <label for="dias_trabajo" class="form-label">Días trabajados</label>
+                    <input type="number" id="dias_trabajo" name="dias_trabajo" class="form-control" min="1" required>
                 </div>
                 <div class="col-md-6 mb-3">
-                    <label class="form-label">Días de descanso</label>
-                    <input type="number" name="dias_descanso" class="form-control" min="0" required>
+                    <label for="dias_descanso" class="form-label">Días de descanso</label>
+                    <input type="number" id="dias_descanso" name="dias_descanso" class="form-control" min="0" required>
                 </div>
             </div>
             <div class="row">
                 <div class="col-md-6 mb-3">
-                    <label class="form-label">Fecha inicio (opcional)</label>
-                    <input type="date" name="fecha_inicio" class="form-control">
+                    <label for="fecha_inicio" class="form-label">Fecha inicio (opcional)</label>
+                    <input type="date" id="fecha_inicio" name="fecha_inicio" class="form-control">
                 </div>
                 <div class="col-md-6 mb-3">
-                    <label class="form-label">Fecha fin (opcional)</label>
-                    <input type="date" name="fecha_fin" class="form-control">
+                    <label for="fecha_fin" class="form-label">Fecha fin (opcional)</label>
+                    <input type="date" id="fecha_fin" name="fecha_fin" class="form-control">
                 </div>
             </div>
             <button type="submit" class="btn btn-dark"><i class="bi bi-check-lg"></i> Asignar rol</button>

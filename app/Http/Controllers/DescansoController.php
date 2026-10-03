@@ -159,6 +159,51 @@ class DescansoController extends Controller
     }
 
     /**
+     * Muestra el formulario de edición de un descanso fijo pendiente.
+     */
+    public function editarPendiente(Request $request, DescansoPendiente $pendiente)
+    {
+        $this->autorizarPendiente($request, $pendiente);
+
+        return view('descansos.editar_pendiente', compact('pendiente'));
+    }
+
+    /**
+     * Actualiza un descanso fijo únicamente si continúa pendiente.
+     */
+    public function actualizarPendiente(Request $request, DescansoPendiente $pendiente)
+    {
+        $this->autorizarPendiente($request, $pendiente);
+        $data = $this->validarEdicionPendiente($request);
+        $actualizados = DescansoPendiente::whereKey($pendiente->id)
+            ->where('estado', 'pendiente')
+            ->update($data);
+
+        if ($actualizados === 0) {
+            return back()->with('error', 'La solicitud ya fue procesada.');
+        }
+
+        return redirect()->route('descansos.pendientes')->with('success', 'Descanso pendiente actualizado.');
+    }
+
+    /**
+     * Elimina un descanso fijo únicamente si continúa pendiente.
+     */
+    public function eliminarPendiente(Request $request, DescansoPendiente $pendiente)
+    {
+        $this->autorizarPendiente($request, $pendiente);
+        $eliminados = DescansoPendiente::whereKey($pendiente->id)
+            ->where('estado', 'pendiente')
+            ->delete();
+
+        if ($eliminados === 0) {
+            return back()->with('error', 'La solicitud ya fue procesada.');
+        }
+
+        return redirect()->route('descansos.pendientes')->with('success', 'Descanso pendiente eliminado.');
+    }
+
+    /**
      * Buzón de aprobación: lista los descansos fijos pendientes.
      *
      * @return View
@@ -238,6 +283,23 @@ class DescansoController extends Controller
             'fecha_fin' => ['required', 'date_format:Y-m-d', 'after_or_equal:fecha_inicio'],
             'observaciones' => ['nullable', 'string', 'max:500'],
         ]);
+    }
+
+    private function validarEdicionPendiente(Request $request): array
+    {
+        return $request->validate([
+            'fecha_inicio' => ['required', 'date_format:Y-m-d', 'after_or_equal:'.now()->subDays(10)->format('Y-m-d')],
+            'fecha_fin' => ['required', 'date_format:Y-m-d', 'after_or_equal:fecha_inicio'],
+            'observaciones' => ['nullable', 'string', 'max:500'],
+        ]);
+    }
+
+    private function autorizarPendiente(Request $request, DescansoPendiente $pendiente): void
+    {
+        SeccionService::autorizar($request->user(), $pendiente->seccion);
+        if ($pendiente->estado !== 'pendiente') {
+            abort(409, 'Solo se pueden modificar descansos pendientes.');
+        }
     }
 
     public function importar()

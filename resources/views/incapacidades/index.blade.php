@@ -17,10 +17,10 @@
 <form method="GET" class="card card-body shadow-sm mb-3">
     <div class="row g-2 align-items-end">
         <div class="col-md-4">
-            <label class="form-label">Número de empleado exacto</label>
-            <input type="number" name="clave" class="form-control" value="{{ request('clave') }}">
+            <label for="clave" class="form-label">Número de empleado exacto</label>
+            <input type="number" id="clave" name="clave" class="form-control" value="{{ request('clave') }}">
         </div>
-        <div class="col-md-2"><button class="btn btn-outline-dark w-100">Filtrar</button></div>
+        <div class="col-md-2"><button type="submit" class="btn btn-outline-dark w-100">Filtrar</button></div>
     </div>
 </form>
 

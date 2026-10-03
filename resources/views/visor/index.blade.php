@@ -17,7 +17,8 @@
 
 <form method="GET" action="{{ route('visor.index') }}" class="row g-2 mb-3">
     <div class="col-md-3">
-        <select name="seccion" class="form-select">
+        <label for="seccion" class="visually-hidden">Sección</label>
+        <select id="seccion" name="seccion" class="form-select">
             <option value="">Todas las secciones</option>
             @foreach($secciones as $s)
                 <option value="{{ $s }}" @selected($seccion === $s)>{{ $s }}</option>
@@ -25,7 +26,8 @@
         </select>
     </div>
     <div class="col-md-3">
-        <input type="number" name="clave" class="form-control" placeholder="Número de empleado exacto" value="{{ $clave }}">
+        <label for="clave" class="visually-hidden">Número de empleado exacto</label>
+        <input type="number" id="clave" name="clave" class="form-control" placeholder="Número de empleado exacto" value="{{ $clave }}">
     </div>
     <div class="col-md-2">
         <button type="submit" class="btn btn-outline-dark w-100">Filtrar</button>

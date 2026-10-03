@@ -132,11 +132,17 @@ class PermisoController extends Controller
     {
         $this->autorizarPendiente($request, $pendiente);
         $data = $this->validarEdicion($request);
-        $pendiente->update([
-            'fecha_inicio' => $data['fecha_inicio'],
-            'fecha_fin' => $data['fecha_fin'] ?? null,
-            'motivo' => $data['motivo'] ?? null,
-        ]);
+        $actualizados = PermisoPendiente::whereKey($pendiente->id)
+            ->where('estado', 'pendiente')
+            ->update([
+                'fecha_inicio' => $data['fecha_inicio'],
+                'fecha_fin' => $data['fecha_fin'] ?? null,
+                'motivo' => $data['motivo'] ?? null,
+            ]);
+
+        if ($actualizados === 0) {
+            return back()->with('error', 'La solicitud ya fue procesada.');
+        }
 
         return redirect()->route('permisos.pendientes')->with('success', 'Permiso actualizado.');
     }
@@ -149,7 +155,13 @@ class PermisoController extends Controller
     public function eliminarPendiente(Request $request, PermisoPendiente $pendiente)
     {
         $this->autorizarPendiente($request, $pendiente);
-        $pendiente->delete();
+        $eliminados = PermisoPendiente::whereKey($pendiente->id)
+            ->where('estado', 'pendiente')
+            ->delete();
+
+        if ($eliminados === 0) {
+            return back()->with('error', 'La solicitud ya fue procesada.');
+        }
 
         return redirect()->route('permisos.pendientes')->with('success', 'Permiso eliminado.');
     }

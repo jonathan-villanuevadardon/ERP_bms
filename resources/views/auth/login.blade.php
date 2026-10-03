@@ -18,7 +18,7 @@
                         </h4>
 
                         @if($errors->any())
-                            <div class="alert alert-danger">
+                            <div class="alert alert-danger" role="alert">
                                 {{ $errors->first() }}
                             </div>
                         @endif
@@ -26,12 +26,12 @@
                         <form method="POST" action="{{ route('login.store') }}">
                             @csrf
                             <div class="mb-3">
-                                <label class="form-label">Correo electrónico</label>
-                                <input type="email" name="email" class="form-control" value="{{ old('email') }}" required autofocus>
+                                <label for="email" class="form-label">Correo electrónico</label>
+                                <input type="email" id="email" name="email" class="form-control" value="{{ old('email') }}" autocomplete="email" required autofocus>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">Contraseña</label>
-                                <input type="password" name="password" class="form-control" required>
+                                <label for="password" class="form-label">Contraseña</label>
+                                <input type="password" id="password" name="password" class="form-control" autocomplete="current-password" required>
                             </div>
                             <div class="mb-3 form-check">
                                 <input type="checkbox" name="remember" class="form-check-input" id="remember">

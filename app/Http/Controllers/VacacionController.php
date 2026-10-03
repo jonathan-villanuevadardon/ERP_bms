@@ -117,11 +117,17 @@ class VacacionController extends Controller
     {
         $this->autorizarPendiente($request, $pendiente);
         $data = $this->validarEdicion($request);
-        $pendiente->update([
-            'fecha_inicio' => $data['fecha_inicio'],
-            'fecha_fin' => $data['fecha_fin'],
-            'observaciones' => $data['observaciones'] ?? null,
-        ]);
+        $actualizados = VacacionPendiente::whereKey($pendiente->id)
+            ->where('estado', 'pendiente')
+            ->update([
+                'fecha_inicio' => $data['fecha_inicio'],
+                'fecha_fin' => $data['fecha_fin'],
+                'observaciones' => $data['observaciones'] ?? null,
+            ]);
+
+        if ($actualizados === 0) {
+            return back()->with('error', 'La solicitud ya fue procesada.');
+        }
 
         return redirect()->route('vacaciones.pendientes')->with('success', 'Solicitud actualizada.');
     }
@@ -134,7 +140,13 @@ class VacacionController extends Controller
     public function eliminarPendiente(Request $request, VacacionPendiente $pendiente)
     {
         $this->autorizarPendiente($request, $pendiente);
-        $pendiente->delete();
+        $eliminados = VacacionPendiente::whereKey($pendiente->id)
+            ->where('estado', 'pendiente')
+            ->delete();
+
+        if ($eliminados === 0) {
+            return back()->with('error', 'La solicitud ya fue procesada.');
+        }
 
         return redirect()->route('vacaciones.pendientes')->with('success', 'Solicitud eliminada.');
     }

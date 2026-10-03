@@ -16,8 +16,9 @@
         <h2 class="h5">2. Valida y previsualiza</h2>
         <form method="POST" action="{{ route('descansos.previsualizar') }}" enctype="multipart/form-data">
             @csrf
-            <input type="file" name="archivo" class="form-control mb-3" accept=".xlsx" required>
-            <button class="btn btn-dark"><i class="bi bi-search"></i> Previsualizar</button>
+            <label for="archivo" class="visually-hidden">Archivo XLSX</label>
+            <input type="file" id="archivo" name="archivo" class="form-control mb-3" accept=".xlsx" required>
+            <button type="submit" class="btn btn-dark"><i class="bi bi-search"></i> Previsualizar</button>
         </form>
     </div></div></div>
     <div class="col-lg-5"><div class="card border-0 bg-body-secondary"><div class="card-body">

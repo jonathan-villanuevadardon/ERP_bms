@@ -6,9 +6,11 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="h3">Asignación de Rol</h1>
     <div>
+        @if(auth()->user()->esAdmin() || auth()->user()->perfil->puede_cargas_masivas)
         <a href="{{ route('roles.plantilla') }}" class="btn btn-outline-dark me-2">
             <i class="bi bi-download"></i> Plantilla Excel
         </a>
+        @endif
         <a href="{{ route('roles.create') }}" class="btn btn-dark">
             <i class="bi bi-plus-lg"></i> Asignar individual
         </a>
@@ -16,14 +18,15 @@
 </div>
 
 {{-- Carga masiva desde Excel --}}
+@if(auth()->user()->esAdmin() || auth()->user()->perfil->puede_cargas_masivas)
 <div class="card shadow-sm mb-4">
     <div class="card-body">
         <h5 class="card-title">Carga masiva (Excel)</h5>
         <form method="POST" action="{{ route('roles.importar') }}" enctype="multipart/form-data" class="row g-2 align-items-end">
             @csrf
             <div class="col-md-6">
-                <label class="form-label">Archivo .xlsx</label>
-                <input type="file" name="archivo" class="form-control" accept=".xlsx" required>
+                <label for="archivo" class="form-label">Archivo .xlsx</label>
+                <input type="file" id="archivo" name="archivo" class="form-control" accept=".xlsx" required>
             </div>
             <div class="col-md-3">
                 <button type="submit" class="btn btn-primary w-100">
@@ -34,11 +37,13 @@
         <small class="text-muted">Descarga la plantilla, llénala y súbela aquí para asignar roles de forma masiva.</small>
     </div>
 </div>
+@endif
 
 {{-- Filtros --}}
 <form method="GET" action="{{ route('roles.index') }}" class="row g-2 mb-3">
     <div class="col-md-3">
-        <select name="seccion" class="form-select">
+        <label for="seccion" class="visually-hidden">Sección</label>
+        <select id="seccion" name="seccion" class="form-select">
             <option value="">Todas las secciones</option>
             @foreach($secciones as $s)
                 <option value="{{ $s }}" @selected(request('seccion') === $s)>{{ $s }}</option>
@@ -46,7 +51,8 @@
         </select>
     </div>
     <div class="col-md-4">
-        <input type="text" name="termino" class="form-control" placeholder="Buscar por nombre, clave o cargo" value="{{ request('termino') }}">
+        <label for="termino" class="visually-hidden">Nombre, clave o cargo</label>
+        <input type="search" id="termino" name="termino" class="form-control" placeholder="Buscar por nombre, clave o cargo" value="{{ request('termino') }}">
     </div>
     <div class="col-md-2">
         <button type="submit" class="btn btn-outline-dark w-100">Filtrar</button>
@@ -89,7 +95,7 @@
                         <a href="{{ route('roles.edit', $rol) }}" class="btn btn-sm btn-outline-primary">Editar</a>
                         <form method="POST" action="{{ route('roles.destroy', $rol) }}" class="d-inline" onsubmit="return confirm('¿Eliminar este rol?')">
                             @csrf @method('DELETE')
-                            <button class="btn btn-sm btn-outline-danger">Eliminar</button>
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Eliminar</button>
                         </form>
                     </td>
                 </tr>

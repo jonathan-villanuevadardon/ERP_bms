@@ -14,17 +14,17 @@
             @csrf @method('PUT')
             <div class="row">
                 <div class="col-md-6 mb-3">
-                    <label class="form-label">Fecha inicio</label>
-                    <input type="date" name="fecha_inicio" class="form-control" value="{{ optional($pendiente->fecha_inicio)->format('Y-m-d') }}" required>
+                    <label for="fecha_inicio" class="form-label">Fecha inicio</label>
+                    <input type="date" id="fecha_inicio" name="fecha_inicio" class="form-control" value="{{ optional($pendiente->fecha_inicio)->format('Y-m-d') }}" required>
                 </div>
                 <div class="col-md-6 mb-3">
-                    <label class="form-label">Fecha fin</label>
-                    <input type="date" name="fecha_fin" class="form-control" value="{{ optional($pendiente->fecha_fin)->format('Y-m-d') }}" required>
+                    <label for="fecha_fin" class="form-label">Fecha fin</label>
+                    <input type="date" id="fecha_fin" name="fecha_fin" class="form-control" value="{{ optional($pendiente->fecha_fin)->format('Y-m-d') }}" required>
                 </div>
             </div>
             <div class="mb-3">
-                <label class="form-label">Observaciones</label>
-                <textarea name="observaciones" class="form-control" rows="2">{{ $pendiente->observaciones }}</textarea>
+                <label for="observaciones" class="form-label">Observaciones</label>
+                <textarea id="observaciones" name="observaciones" class="form-control" rows="2">{{ $pendiente->observaciones }}</textarea>
             </div>
             <button type="submit" class="btn btn-dark"><i class="bi bi-check-lg"></i> Guardar</button>
 

@@ -6,6 +6,8 @@ use App\Models\Perfil;
 use App\Services\SeccionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -18,6 +20,20 @@ use Illuminate\View\View;
  */
 class PerfilController extends Controller
 {
+    private const PERMISOS_DE_MODULOS = [
+        'puede_asignar_rol',
+        'puede_gestionar_descansos',
+        'puede_gestionar_vacaciones',
+        'puede_gestionar_permisos',
+        'puede_aprobar',
+        'es_admin',
+        'puede_ver_visor',
+        'puede_cargas_masivas',
+        'puede_gestionar_incapacidades',
+        'puede_ver_lista_asistencia',
+        'puede_gestionar_viaticos',
+    ];
+
     /**
      * Lista los perfiles existentes.
      *
@@ -38,8 +54,9 @@ class PerfilController extends Controller
     public function create()
     {
         $secciones = SeccionService::disponibles();
+        $permisosDisponibles = $this->permisosDisponibles();
 
-        return view('perfiles.create', compact('secciones'));
+        return view('perfiles.create', compact('secciones', 'permisosDisponibles'));
     }
 
     /**
@@ -64,8 +81,9 @@ class PerfilController extends Controller
     public function edit(Perfil $perfil)
     {
         $secciones = SeccionService::disponibles();
+        $permisosDisponibles = $this->permisosDisponibles();
 
-        return view('perfiles.edit', compact('perfil', 'secciones'));
+        return view('perfiles.edit', compact('perfil', 'secciones', 'permisosDisponibles'));
     }
 
     /**
@@ -76,6 +94,10 @@ class PerfilController extends Controller
     public function update(Request $request, Perfil $perfil)
     {
         $data = $this->validar($request, $perfil);
+
+        if ($perfil->es_admin && ! $data['es_admin']) {
+            return back()->withInput()->with('error', 'No se puede retirar la condición de administrador al perfil administrador.');
+        }
 
         $perfil->update($data);
 
@@ -89,11 +111,25 @@ class PerfilController extends Controller
      */
     public function destroy(Perfil $perfil)
     {
-        if ($perfil->es_admin) {
-            return back()->with('error', 'No se puede eliminar el perfil administrador.');
-        }
+        $error = DB::transaction(function () use ($perfil) {
+            $registro = Perfil::whereKey($perfil->id)->lockForUpdate()->firstOrFail();
 
-        $perfil->delete();
+            if ($registro->es_admin) {
+                return 'No se puede eliminar el perfil administrador.';
+            }
+
+            if ($registro->usuarios()->where('activo', true)->exists()) {
+                return 'No se puede eliminar un perfil asignado a usuarios activos. Reasígnalos o desactívalos primero.';
+            }
+
+            $registro->delete();
+
+            return null;
+        });
+
+        if ($error) {
+            return back()->with('error', $error);
+        }
 
         return redirect()->route('perfiles.index')->with('success', 'Perfil eliminado.');
     }
@@ -111,21 +147,26 @@ class PerfilController extends Controller
             'secciones.*' => ['string', Rule::in(SeccionService::disponibles())],
         ]);
 
-        return [
+        return array_merge([
             'nombre' => $request->input('nombre'),
             'slug' => $request->input('slug'),
             'descripcion' => $request->input('descripcion'),
-            'puede_asignar_rol' => $request->boolean('puede_asignar_rol'),
-            'puede_gestionar_descansos' => $request->boolean('puede_gestionar_descansos'),
-            'puede_gestionar_vacaciones' => $request->boolean('puede_gestionar_vacaciones'),
-            'puede_gestionar_permisos' => $request->boolean('puede_gestionar_permisos'),
-            'puede_aprobar' => $request->boolean('puede_aprobar'),
-            'es_admin' => $request->boolean('es_admin'),
-            'puede_ver_visor' => $request->boolean('puede_ver_visor'),
-            'puede_cargas_masivas' => $request->boolean('puede_cargas_masivas'),
-            'puede_gestionar_incapacidades' => $request->boolean('puede_gestionar_incapacidades'),
-            'puede_ver_lista_asistencia' => $request->boolean('puede_ver_lista_asistencia'),
             'secciones' => $request->input('secciones', []),
-        ];
+        ], $this->permisosSolicitados($request));
+    }
+
+    private function permisosDisponibles(): array
+    {
+        return array_values(array_filter(
+            self::PERMISOS_DE_MODULOS,
+            fn (string $permiso) => Schema::hasColumn('perfiles', $permiso)
+        ));
+    }
+
+    private function permisosSolicitados(Request $request): array
+    {
+        return collect($this->permisosDisponibles())
+            ->mapWithKeys(fn (string $permiso) => [$permiso => $request->boolean($permiso)])
+            ->all();
     }
 }

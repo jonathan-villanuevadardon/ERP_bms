@@ -50,7 +50,7 @@
                         <a href="{{ route('perfiles.edit', $p) }}" class="btn btn-sm btn-outline-primary">Editar</a>
                         <form method="POST" action="{{ route('perfiles.destroy', $p) }}" class="d-inline" onsubmit="return confirm('¿Eliminar este perfil?')">
                             @csrf @method('DELETE')
-                            <button class="btn btn-sm btn-outline-danger">Eliminar</button>
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Eliminar</button>
                         </form>
                     </td>
                 </tr>

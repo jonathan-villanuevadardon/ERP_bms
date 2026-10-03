@@ -20,6 +20,6 @@
 <form method="POST" action="{{ route('descansos.confirmar_importacion') }}" onsubmit="this.querySelector('button').disabled=true">
     @csrf
     <input type="hidden" name="token" value="{{ $token }}">
-    <button class="btn btn-success"><i class="bi bi-check-lg"></i> Confirmar e importar {{ count($filas) }} filas</button>
+    <button type="submit" class="btn btn-success"><i class="bi bi-check-lg"></i> Confirmar e importar {{ count($filas) }} filas</button>
 </form>
 @endsection

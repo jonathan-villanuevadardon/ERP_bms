@@ -36,13 +36,13 @@
                         <a href="{{ route('vacaciones.editar_pendiente', $p) }}" class="btn btn-sm btn-outline-primary">Editar</a>
                         @endif
                         @if(auth()->user()->esAdmin() || auth()->user()->perfil->puede_aprobar)
-                        <form method="POST" action="{{ route('vacaciones.aprobar', $p) }}" class="d-inline">
+                        <form method="POST" action="{{ route('vacaciones.aprobar', $p) }}" class="d-inline" onsubmit="return confirm('¿Aprobar estas vacaciones?')">
                             @csrf
-                            <button class="btn btn-sm btn-success">Aprobar</button>
+                            <button type="submit" class="btn btn-sm btn-success">Aprobar</button>
                         </form>
                         <form method="POST" action="{{ route('vacaciones.rechazar', $p) }}" class="d-inline" onsubmit="return confirm('¿Rechazar?')">
                             @csrf
-                            <button class="btn btn-sm btn-outline-danger">Rechazar</button>
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Rechazar</button>
                         </form>
                         @endif
                     </td>

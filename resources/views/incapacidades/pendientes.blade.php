@@ -15,11 +15,11 @@
         <td class="text-end text-nowrap">
             @if(auth()->user()->esAdmin() || auth()->user()->perfil->puede_gestionar_incapacidades)
             <a href="{{ route('incapacidades.editar_pendiente', $p) }}" class="btn btn-sm btn-outline-primary">Editar</a>
-            <form method="POST" action="{{ route('incapacidades.eliminar_pendiente', $p) }}" class="d-inline" onsubmit="return confirm('¿Eliminar la solicitud?')">@csrf @method('DELETE')<button class="btn btn-sm btn-outline-danger">Eliminar</button></form>
+            <form method="POST" action="{{ route('incapacidades.eliminar_pendiente', $p) }}" class="d-inline" onsubmit="return confirm('¿Eliminar la solicitud?')">@csrf @method('DELETE')<button type="submit" class="btn btn-sm btn-outline-danger">Eliminar</button></form>
             @endif
             @if(auth()->user()->esAdmin() || auth()->user()->perfil->puede_aprobar)
-            <form method="POST" action="{{ route('incapacidades.aprobar', $p) }}" class="d-inline">@csrf<button class="btn btn-sm btn-success">Aprobar</button></form>
-            <form method="POST" action="{{ route('incapacidades.rechazar', $p) }}" class="d-inline" onsubmit="return confirm('¿Rechazar la solicitud?')">@csrf<button class="btn btn-sm btn-outline-danger">Rechazar</button></form>
+            <form method="POST" action="{{ route('incapacidades.aprobar', $p) }}" class="d-inline" onsubmit="return confirm('¿Aprobar esta incapacidad?')">@csrf<button type="submit" class="btn btn-sm btn-success">Aprobar</button></form>
+            <form method="POST" action="{{ route('incapacidades.rechazar', $p) }}" class="d-inline" onsubmit="return confirm('¿Rechazar la solicitud?')">@csrf<button type="submit" class="btn btn-sm btn-outline-danger">Rechazar</button></form>
             @endif
         </td>
     </tr>

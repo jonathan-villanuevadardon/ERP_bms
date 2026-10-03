@@ -38,7 +38,7 @@
                         @if(!$u->esAdmin())
                         <form method="POST" action="{{ route('usuarios.destroy', $u) }}" class="d-inline" onsubmit="return confirm('¿Desactivar este usuario?')">
                             @csrf @method('DELETE')
-                            <button class="btn btn-sm btn-outline-danger">Desactivar</button>
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Desactivar</button>
                         </form>
                         @endif
                     </td>

@@ -7,8 +7,8 @@
 
 <div class="card shadow-sm mb-4"><div class="card-body">
     <form method="GET" action="{{ route('incapacidades.create') }}" class="row g-2">
-        <div class="col-md-6"><input type="text" name="termino" class="form-control" placeholder="Buscar por nombre, clave o cargo" value="{{ request('termino') }}"></div>
-        <div class="col-md-2"><button class="btn btn-outline-dark w-100">Buscar</button></div>
+        <div class="col-md-6"><label for="termino" class="visually-hidden">Nombre, clave o cargo</label><input type="search" id="termino" name="termino" class="form-control" placeholder="Buscar por nombre, clave o cargo" value="{{ request('termino') }}"></div>
+        <div class="col-md-2"><button type="submit" class="btn btn-outline-dark w-100">Buscar</button></div>
     </form>
     @if(!empty($empleados))
     <div class="list-group mt-3">

@@ -17,7 +17,7 @@
             <a class="navbar-brand" href="{{ route('dashboard') }}">
                 <i class="bi bi-building"></i> ERP BMS
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navPrincipal">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navPrincipal" aria-controls="navPrincipal" aria-expanded="false" aria-label="Mostrar navegación principal">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navPrincipal">
@@ -60,6 +60,11 @@
                         <a class="nav-link" href="{{ route('lista_asistencia.index') }}">Lista de Asistencia</a>
                     </li>
                     @endif
+                    @if(auth()->user()->esAdmin() || auth()->user()->perfil->puede_gestionar_viaticos)
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('viaticos.index') }}">Viáticos</a>
+                    </li>
+                    @endif
                     @if(auth()->user()->esAdmin())
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
@@ -96,25 +101,25 @@
     <main class="container-fluid px-4">
         {{-- Mensajes flash (éxito / error) --}}
         @if(session('success'))
-            <div class="alert alert-success alert-dismissible fade show">
+            <div class="alert alert-success alert-dismissible fade show" role="status">
                 {{ session('success') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar mensaje"></button>
             </div>
         @endif
         @if(session('error'))
-            <div class="alert alert-danger alert-dismissible fade show">
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
                 {{ session('error') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar mensaje"></button>
             </div>
         @endif
         @if($errors->any())
-            <div class="alert alert-danger alert-dismissible fade show">
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
                 <ul class="mb-0">
                     @foreach($errors->all() as $error)
                         <li>{{ $error }}</li>
                     @endforeach
                 </ul>
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar mensaje"></button>
             </div>
         @endif
 
@@ -122,6 +127,27 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    document.addEventListener('submit', (event) => {
+        const form = event.target;
+        window.setTimeout(() => {
+            if (event.defaultPrevented) return;
+            form.dataset.submitting = 'true';
+            form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach((control) => {
+                if (control.disabled) return;
+                control.disabled = true;
+                control.dataset.disabledOnSubmit = 'true';
+            });
+        }, 0);
+    });
+    window.addEventListener('pageshow', () => {
+        document.querySelectorAll('[data-disabled-on-submit="true"]').forEach((control) => {
+            control.disabled = false;
+            delete control.dataset.disabledOnSubmit;
+        });
+        document.querySelectorAll('form[data-submitting="true"]').forEach((form) => delete form.dataset.submitting);
+    });
+    </script>
     @stack('scripts')
 </body>
 </html>

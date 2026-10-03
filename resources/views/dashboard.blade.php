@@ -79,6 +79,12 @@
         <a href="{{ route('lista_asistencia.index') }}" class="btn btn-sm btn-outline-dark">Consultar</a>
     </div></div></div>
     @endif
+    @if($user->esAdmin() || $user->perfil->puede_gestionar_viaticos)
+    <div class="col-md-4 col-lg-3"><div class="card shadow-sm h-100"><div class="card-body">
+        <h5 class="card-title"><i class="bi bi-ticket-perforated"></i> Viáticos</h5><p class="card-text text-muted small">Revisa boletos, asigna semana de pago y aprueba viáticos.</p>
+        <a href="{{ route('viaticos.index') }}" class="btn btn-sm btn-outline-dark">Revisar</a>
+    </div></div></div>
+    @endif
 </div>
 
 @if($user->esAdmin() || $user->perfil->puede_aprobar)

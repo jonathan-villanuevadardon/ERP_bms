@@ -13,12 +13,12 @@
         <form method="POST" action="{{ route('descansos.update', $descanso) }}">
             @csrf @method('PUT')
             <div class="mb-3">
-                <label class="form-label">Número de empleado</label>
-                <input type="number" name="clave" class="form-control" value="{{ $descanso->clave }}" required>
+                <label for="clave" class="form-label">Número de empleado</label>
+                <input type="number" id="clave" name="clave" class="form-control" value="{{ $descanso->clave }}" required>
             </div>
             <div class="mb-3">
-                <label class="form-label">Tipo</label>
-                <select name="tipo" class="form-select" required>
+                <label for="tipo" class="form-label">Tipo</label>
+                <select id="tipo" name="tipo" class="form-select" required>
                     <option value="por_periodo" @selected($descanso->tipo === 'por_periodo')>Por periodo</option>
                     <option value="fijo" @selected($descanso->tipo === 'fijo')>Fijo</option>
                 </select>
@@ -26,17 +26,17 @@
             </div>
             <div class="row">
                 <div class="col-md-6 mb-3">
-                    <label class="form-label">Fecha inicio</label>
-                    <input type="date" name="fecha_inicio" class="form-control" value="{{ optional($descanso->fecha_inicio)->format('Y-m-d') }}" required>
+                    <label for="fecha_inicio" class="form-label">Fecha inicio</label>
+                    <input type="date" id="fecha_inicio" name="fecha_inicio" class="form-control" value="{{ optional($descanso->fecha_inicio)->format('Y-m-d') }}" required>
                 </div>
                 <div class="col-md-6 mb-3">
-                    <label class="form-label">Fecha fin</label>
-                    <input type="date" name="fecha_fin" class="form-control" value="{{ optional($descanso->fecha_fin)->format('Y-m-d') }}" required>
+                    <label for="fecha_fin" class="form-label">Fecha fin</label>
+                    <input type="date" id="fecha_fin" name="fecha_fin" class="form-control" value="{{ optional($descanso->fecha_fin)->format('Y-m-d') }}" required>
                 </div>
             </div>
             <div class="mb-3">
-                <label class="form-label">Observaciones</label>
-                <textarea name="observaciones" class="form-control" rows="2">{{ $descanso->observaciones }}</textarea>
+                <label for="observaciones" class="form-label">Observaciones</label>
+                <textarea id="observaciones" name="observaciones" class="form-control" rows="2">{{ $descanso->observaciones }}</textarea>
             </div>
             <button type="submit" class="btn btn-dark"><i class="bi bi-check-lg"></i> Guardar</button>
         </form>

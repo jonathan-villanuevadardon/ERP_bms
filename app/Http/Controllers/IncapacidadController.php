@@ -7,6 +7,7 @@ use App\Models\IncapacidadPendiente;
 use App\Services\EmpleadoService;
 use App\Services\SeccionService;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -60,14 +61,18 @@ class IncapacidadController extends Controller
         SeccionService::autorizar($request->user(), $empleado['seccion']);
         $this->validarFolioDisponible($data['folio']);
 
-        IncapacidadPendiente::create(array_merge($data, [
-            'nombre_completo' => $empleado['nombre_completo'],
-            'area' => $empleado['area'],
-            'seccion' => $empleado['seccion'],
-            'dias' => $this->dias($data['fecha_inicio'], $data['fecha_fin']),
-            'estado' => 'pendiente',
-            'creado_por' => $request->user()->id,
-        ]));
+        try {
+            IncapacidadPendiente::create(array_merge($data, [
+                'nombre_completo' => $empleado['nombre_completo'],
+                'area' => $empleado['area'],
+                'seccion' => $empleado['seccion'],
+                'dias' => $this->dias($data['fecha_inicio'], $data['fecha_fin']),
+                'estado' => 'pendiente',
+                'creado_por' => $request->user()->id,
+            ]));
+        } catch (QueryException $exception) {
+            $this->convertirFolioDuplicado($exception);
+        }
 
         return redirect()->route('incapacidades.pendientes')->with('success', 'Incapacidad enviada a aprobación.');
     }
@@ -104,12 +109,22 @@ class IncapacidadController extends Controller
         SeccionService::autorizar($request->user(), $empleado['seccion']);
         $this->validarFolioDisponible($data['folio'], $pendiente->id);
 
-        $pendiente->update(array_merge($data, [
-            'nombre_completo' => $empleado['nombre_completo'],
-            'area' => $empleado['area'],
-            'seccion' => $empleado['seccion'],
-            'dias' => $this->dias($data['fecha_inicio'], $data['fecha_fin']),
-        ]));
+        try {
+            $actualizados = IncapacidadPendiente::whereKey($pendiente->id)
+                ->where('estado', 'pendiente')
+                ->update(array_merge($data, [
+                    'nombre_completo' => $empleado['nombre_completo'],
+                    'area' => $empleado['area'],
+                    'seccion' => $empleado['seccion'],
+                    'dias' => $this->dias($data['fecha_inicio'], $data['fecha_fin']),
+                ]));
+        } catch (QueryException $exception) {
+            $this->convertirFolioDuplicado($exception);
+        }
+
+        if ($actualizados === 0) {
+            return back()->with('error', 'La solicitud ya fue procesada.');
+        }
 
         return redirect()->route('incapacidades.pendientes')->with('success', 'Incapacidad pendiente actualizada.');
     }
@@ -117,7 +132,13 @@ class IncapacidadController extends Controller
     public function eliminarPendiente(Request $request, IncapacidadPendiente $pendiente)
     {
         $this->autorizarPendiente($request, $pendiente);
-        $pendiente->delete();
+        $eliminados = IncapacidadPendiente::whereKey($pendiente->id)
+            ->where('estado', 'pendiente')
+            ->delete();
+
+        if ($eliminados === 0) {
+            return back()->with('error', 'La solicitud ya fue procesada.');
+        }
 
         return redirect()->route('incapacidades.pendientes')->with('success', 'Incapacidad pendiente eliminada.');
     }
@@ -210,5 +231,16 @@ class IncapacidadController extends Controller
         if ($duplicadoPendiente || Incapacidad::where('folio', $folio)->exists()) {
             throw ValidationException::withMessages(['folio' => 'El folio IMSS ya está registrado.']);
         }
+    }
+
+    private function convertirFolioDuplicado(QueryException $exception): never
+    {
+        $codigoSqlServer = (int) ($exception->errorInfo[1] ?? 0);
+
+        if (in_array($codigoSqlServer, [2601, 2627], true)) {
+            throw ValidationException::withMessages(['folio' => 'El folio IMSS ya está registrado.']);
+        }
+
+        throw $exception;
     }
 }

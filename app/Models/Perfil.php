@@ -42,6 +42,7 @@ class Perfil extends Model
         'puede_cargas_masivas',
         'puede_gestionar_incapacidades',
         'puede_ver_lista_asistencia',
+        'puede_gestionar_viaticos',
         'secciones',
     ];
 
@@ -62,6 +63,7 @@ class Perfil extends Model
         'puede_cargas_masivas' => 'boolean',
         'puede_gestionar_incapacidades' => 'boolean',
         'puede_ver_lista_asistencia' => 'boolean',
+        'puede_gestionar_viaticos' => 'boolean',
     ];
 
     /**

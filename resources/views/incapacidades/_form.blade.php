@@ -4,12 +4,12 @@
 
 <div class="row">
     <div class="col-md-4 mb-3">
-        <label class="form-label">Número de empleado</label>
+        <label for="clave" class="form-label">Número de empleado</label>
         <input type="number" name="clave" id="clave" class="form-control" value="{{ old('clave', $i?->clave) }}" required>
     </div>
     <div class="col-md-4 mb-3">
-        <label class="form-label">Tipo de incapacidad</label>
-        <select name="tipo" class="form-select" required>
+        <label for="tipo" class="form-label">Tipo de incapacidad</label>
+        <select id="tipo" name="tipo" class="form-select" required>
             <option value="">Selecciona...</option>
             @foreach($tipos as $valor => $etiqueta)
                 <option value="{{ $valor }}" @selected(old('tipo', $i?->tipo) === $valor)>{{ $etiqueta }}</option>
@@ -17,29 +17,29 @@
         </select>
     </div>
     <div class="col-md-4 mb-3">
-        <label class="form-label">Folio IMSS</label>
-        <input type="text" name="folio" class="form-control" maxlength="100" value="{{ old('folio', $i?->folio) }}" required>
+        <label for="folio" class="form-label">Folio IMSS</label>
+        <input type="text" id="folio" name="folio" class="form-control" maxlength="100" value="{{ old('folio', $i?->folio) }}" required>
     </div>
 </div>
 <div class="row">
     <div class="col-md-4 mb-3">
-        <label class="form-label">Fecha inicio</label>
+        <label for="fecha_inicio" class="form-label">Fecha inicio</label>
         <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control" value="{{ old('fecha_inicio', $i?->fecha_inicio?->format('Y-m-d')) }}" required>
     </div>
     <div class="col-md-4 mb-3">
-        <label class="form-label">Fecha fin</label>
+        <label for="fecha_fin" class="form-label">Fecha fin</label>
         <input type="date" name="fecha_fin" id="fecha_fin" class="form-control" value="{{ old('fecha_fin', $i?->fecha_fin?->format('Y-m-d')) }}" required>
     </div>
     <div class="col-md-4 mb-3">
-        <label class="form-label">Días (cálculo automático)</label>
+        <label for="dias" class="form-label">Días (cálculo automático)</label>
         <input type="number" id="dias" class="form-control" value="{{ $i?->dias }}" readonly>
     </div>
 </div>
 <div class="mb-3">
-    <label class="form-label">Observaciones</label>
-    <textarea name="observaciones" class="form-control" rows="3" maxlength="500">{{ old('observaciones', $i?->observaciones) }}</textarea>
+    <label for="observaciones" class="form-label">Observaciones</label>
+    <textarea id="observaciones" name="observaciones" class="form-control" rows="3" maxlength="500">{{ old('observaciones', $i?->observaciones) }}</textarea>
 </div>
-<button class="btn btn-dark"><i class="bi bi-check-lg"></i> {{ isset($pendiente) ? 'Guardar cambios' : 'Enviar a aprobación' }}</button>
+<button type="submit" class="btn btn-dark"><i class="bi bi-check-lg"></i> {{ isset($pendiente) ? 'Guardar cambios' : 'Enviar a aprobación' }}</button>
 
 @push('scripts')
 <script>

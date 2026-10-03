@@ -51,7 +51,7 @@
                         <a href="{{ route('descansos.edit', $d) }}" class="btn btn-sm btn-outline-primary">Editar</a>
                         <form method="POST" action="{{ route('descansos.destroy', $d) }}" class="d-inline" onsubmit="return confirm('¿Eliminar?')">
                             @csrf @method('DELETE')
-                            <button class="btn btn-sm btn-outline-danger">Eliminar</button>
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Eliminar</button>
                         </form>
                     </td>
                 </tr>

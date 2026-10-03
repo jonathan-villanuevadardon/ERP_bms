@@ -10,11 +10,11 @@
 
 <form method="GET" action="{{ route('lista_asistencia.index') }}" class="card card-body shadow-sm mb-3">
     <div class="row g-3 align-items-end">
-        <div class="col-sm-6 col-lg-2"><label class="form-label">Desde</label><input type="date" name="desde" class="form-control" value="{{ $filtros['desde'] }}" required></div>
-        <div class="col-sm-6 col-lg-2"><label class="form-label">Hasta</label><input type="date" name="hasta" class="form-control" value="{{ $filtros['hasta'] }}" max="{{ now()->format('Y-m-d') }}" required></div>
-        <div class="col-sm-6 col-lg-3"><label class="form-label">Sección</label><select name="seccion" class="form-select" required>@foreach($secciones as $s)<option value="{{ $s }}" @selected($filtros['seccion'] === $s)>{{ $s }}</option>@endforeach</select></div>
-        <div class="col-sm-6 col-lg-3"><label class="form-label">Número de empleado exacto</label><input type="number" name="clave" class="form-control" value="{{ $filtros['clave'] }}"></div>
-        <div class="col-lg-2"><button class="btn btn-dark w-100">Consultar</button></div>
+        <div class="col-sm-6 col-lg-2"><label for="desde" class="form-label">Desde</label><input type="date" id="desde" name="desde" class="form-control" value="{{ $filtros['desde'] }}" required></div>
+        <div class="col-sm-6 col-lg-2"><label for="hasta" class="form-label">Hasta</label><input type="date" id="hasta" name="hasta" class="form-control" value="{{ $filtros['hasta'] }}" max="{{ now()->format('Y-m-d') }}" required></div>
+        <div class="col-sm-6 col-lg-3"><label for="seccion" class="form-label">Sección</label><select id="seccion" name="seccion" class="form-select" required>@foreach($secciones as $s)<option value="{{ $s }}" @selected($filtros['seccion'] === $s)>{{ $s }}</option>@endforeach</select></div>
+        <div class="col-sm-6 col-lg-3"><label for="clave" class="form-label">Número de empleado exacto</label><input type="number" id="clave" name="clave" class="form-control" value="{{ $filtros['clave'] }}"></div>
+        <div class="col-lg-2"><button type="submit" class="btn btn-dark w-100">Consultar</button></div>
     </div>
     <div class="form-text mt-2">El periodo incluye ambas fechas y admite un máximo de 30 días.</div>
 </form>

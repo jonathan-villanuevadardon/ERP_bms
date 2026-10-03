@@ -13,27 +13,27 @@
         <form method="POST" action="{{ route('roles.update', $rol) }}">
             @csrf @method('PUT')
             <div class="mb-3">
-                <label class="form-label">Número de empleado</label>
-                <input type="number" name="clave" class="form-control" value="{{ $rol->clave }}" required>
+                <label for="clave" class="form-label">Número de empleado</label>
+                <input type="number" id="clave" name="clave" class="form-control" value="{{ $rol->clave }}" required>
             </div>
             <div class="row">
                 <div class="col-md-6 mb-3">
-                    <label class="form-label">Días trabajados</label>
-                    <input type="number" name="dias_trabajo" class="form-control" min="1" value="{{ $rol->dias_trabajo }}" required>
+                    <label for="dias_trabajo" class="form-label">Días trabajados</label>
+                    <input type="number" id="dias_trabajo" name="dias_trabajo" class="form-control" min="1" value="{{ $rol->dias_trabajo }}" required>
                 </div>
                 <div class="col-md-6 mb-3">
-                    <label class="form-label">Días de descanso</label>
-                    <input type="number" name="dias_descanso" class="form-control" min="0" value="{{ $rol->dias_descanso }}" required>
+                    <label for="dias_descanso" class="form-label">Días de descanso</label>
+                    <input type="number" id="dias_descanso" name="dias_descanso" class="form-control" min="0" value="{{ $rol->dias_descanso }}" required>
                 </div>
             </div>
             <div class="row">
                 <div class="col-md-6 mb-3">
-                    <label class="form-label">Fecha inicio (opcional)</label>
-                    <input type="date" name="fecha_inicio" class="form-control" value="{{ optional($rol->fecha_inicio)->format('Y-m-d') }}">
+                    <label for="fecha_inicio" class="form-label">Fecha inicio (opcional)</label>
+                    <input type="date" id="fecha_inicio" name="fecha_inicio" class="form-control" value="{{ optional($rol->fecha_inicio)->format('Y-m-d') }}">
                 </div>
                 <div class="col-md-6 mb-3">
-                    <label class="form-label">Fecha fin (opcional)</label>
-                    <input type="date" name="fecha_fin" class="form-control" value="{{ optional($rol->fecha_fin)->format('Y-m-d') }}">
+                    <label for="fecha_fin" class="form-label">Fecha fin (opcional)</label>
+                    <input type="date" id="fecha_fin" name="fecha_fin" class="form-control" value="{{ optional($rol->fecha_fin)->format('Y-m-d') }}">
                 </div>
             </div>
             <button type="submit" class="btn btn-dark"><i class="bi bi-check-lg"></i> Guardar cambios</button>

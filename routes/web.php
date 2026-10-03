@@ -10,6 +10,7 @@ use App\Http\Controllers\PermisoController;
 use App\Http\Controllers\RolDescansoController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\VacacionController;
+use App\Http\Controllers\ViaticoController;
 use App\Http\Controllers\VisorController;
 use App\Http\Middleware\RequiereAdmin;
 use App\Http\Middleware\VerificarPerfil;
@@ -21,9 +22,13 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-Route::get('login', [LoginController::class, 'showLoginForm'])->name('login');
-Route::post('login', [LoginController::class, 'login'])->name('login.store');
-Route::post('logout', [LoginController::class, 'logout'])->name('logout');
+Route::middleware('guest')->group(function () {
+    Route::get('login', [LoginController::class, 'showLoginForm'])->name('login');
+    Route::post('login', [LoginController::class, 'login'])
+        ->middleware('throttle:5,1')
+        ->name('login.store');
+});
+Route::post('logout', [LoginController::class, 'logout'])->middleware('auth')->name('logout');
 
 /*
 |--------------------------------------------------------------------------
@@ -67,6 +72,9 @@ Route::middleware(['auth', VerificarPerfil::class])->group(function () {
             Route::get('{descanso}/editar', [DescansoController::class, 'edit'])->name('edit');
             Route::put('{descanso}', [DescansoController::class, 'update'])->name('update');
             Route::delete('{descanso}', [DescansoController::class, 'destroy'])->name('destroy');
+            Route::get('pendientes/{pendiente}/editar', [DescansoController::class, 'editarPendiente'])->name('editar_pendiente');
+            Route::put('pendientes/{pendiente}', [DescansoController::class, 'actualizarPendiente'])->name('actualizar_pendiente');
+            Route::delete('pendientes/{pendiente}', [DescansoController::class, 'eliminarPendiente'])->name('eliminar_pendiente');
             Route::middleware('permiso:puede_cargas_masivas')->group(function () {
                 Route::get('carga/importar', [DescansoController::class, 'importar'])->name('importar');
                 Route::get('carga/plantilla', [DescansoController::class, 'plantilla'])->name('plantilla');
@@ -141,6 +149,22 @@ Route::middleware(['auth', VerificarPerfil::class])->group(function () {
             Route::post('pendientes/{pendiente}/aprobar', [IncapacidadController::class, 'aprobar'])->name('aprobar');
             Route::post('pendientes/{pendiente}/rechazar', [IncapacidadController::class, 'rechazar'])->name('rechazar');
         });
+    });
+
+    /*
+    |----------------------------------------------------------------------
+    | Módulo: Viáticos
+    |----------------------------------------------------------------------
+    */
+    Route::prefix('viaticos')->name('viaticos.')->middleware('permiso:puede_gestionar_viaticos')->group(function () {
+        Route::get('/', [ViaticoController::class, 'index'])->name('index');
+        Route::get('crear', [ViaticoController::class, 'create'])->name('crear');
+        Route::post('/', [ViaticoController::class, 'store'])->name('guardar');
+        Route::get('{viatico}/editar', [ViaticoController::class, 'edit'])->name('editar');
+        Route::put('{viatico}', [ViaticoController::class, 'update'])->name('actualizar');
+        Route::get('{viatico}/imagen', [ViaticoController::class, 'imagen'])->name('imagen');
+        Route::post('aprobar', [ViaticoController::class, 'aprobar'])->middleware('permiso:puede_aprobar')->name('aprobar');
+        Route::post('rechazar', [ViaticoController::class, 'rechazar'])->name('rechazar');
     });
 
     /*

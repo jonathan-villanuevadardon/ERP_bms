@@ -26,31 +26,40 @@ class PerfilAdminSeeder extends Seeder
         $admin = Perfil::firstOrCreate(
             ['slug' => 'admin'],
             [
-                'nombre'                  => 'Administrador',
-                'descripcion'             => 'Perfil administrador con acceso total y aprobación.',
-                'puede_asignar_rol'       => true,
+                'nombre' => 'Administrador',
+                'descripcion' => 'Perfil administrador con acceso total y aprobación.',
+                'puede_asignar_rol' => true,
                 'puede_gestionar_descansos' => true,
                 'puede_gestionar_vacaciones' => true,
                 'puede_gestionar_permisos' => true,
-                'puede_aprobar'           => true,
-                'es_admin'                => true,
-                'puede_ver_visor'         => true,
-                'secciones'               => null,
+                'puede_aprobar' => true,
+                'es_admin' => true,
+                'puede_ver_visor' => true,
+                'puede_gestionar_viaticos' => true,
+                'secciones' => null,
             ]
         );
 
         // 2) Crea un usuario administrador inicial si no existe.
-        $email = env('ADMIN_EMAIL', 'admin@erpbms.local');
-        $password = env('ADMIN_PASSWORD', 'Cambiar123!');
+        if ($admin->usuarios()->where('activo', true)->exists()) {
+            return;
+        }
 
-        Usuario::firstOrCreate(
-            ['email' => $email],
-            [
-                'name'     => 'Administrador',
-                'password' => Hash::make($password),
-                'perfil_id' => $admin->id,
-                'activo'   => true,
-            ]
-        );
+        $email = env('ADMIN_EMAIL');
+        $password = env('ADMIN_PASSWORD');
+
+        if (! is_string($email) || trim($email) === '' || ! is_string($password) || $password === '') {
+            throw new \RuntimeException('Define ADMIN_EMAIL y ADMIN_PASSWORD antes de crear el usuario administrador inicial.');
+        }
+
+        $usuario = Usuario::withTrashed()->firstOrNew(['email' => trim($email)]);
+        $usuario->fill([
+            'name' => $usuario->name ?: 'Administrador',
+            'password' => Hash::make($password),
+            'perfil_id' => $admin->id,
+            'activo' => true,
+        ]);
+        $usuario->deleted_at = null;
+        $usuario->save();
     }
 }
