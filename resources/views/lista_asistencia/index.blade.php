@@ -3,9 +3,28 @@
 @section('title', 'Lista de Asistencia')
 
 @section('content')
+@php($parametrosExportacion = array_filter($filtros, fn ($valor) => $valor !== null && $valor !== ''))
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
     <div><h1 class="h3 mb-1">Lista diaria de asistencia</h1><p class="text-muted mb-0">Clasificación consolidada para revisión de nómina.</p></div>
-    <a href="{{ route('lista_asistencia.exportar', request()->query()) }}" class="btn btn-success"><i class="bi bi-file-earmark-excel"></i> Exportar Excel</a>
+    <div class="dropdown">
+        <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Exportar Excel
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end p-2" style="min-width: 20rem;">
+            <li>
+                <a href="{{ route('lista_asistencia.exportar', array_merge($parametrosExportacion, ['formato' => 'base_datos'])) }}" class="dropdown-item rounded py-2">
+                    <span class="d-block fw-semibold">Base de datos</span>
+                    <span class="d-block small text-muted">Una fila por empleado y fecha.</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ route('lista_asistencia.exportar', array_merge($parametrosExportacion, ['formato' => 'lista'])) }}" class="dropdown-item rounded py-2">
+                    <span class="d-block fw-semibold">Lista</span>
+                    <span class="d-block small text-muted">Empleados por fila, fechas por columna y totales por estatus.</span>
+                </a>
+            </li>
+        </ul>
+    </div>
 </div>
 
 <form method="GET" action="{{ route('lista_asistencia.index') }}" class="card card-body shadow-sm mb-3">

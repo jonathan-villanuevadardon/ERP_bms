@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exports\ListaAsistenciaExport;
+use App\Exports\ListaAsistenciaMatrizExport;
 use App\Models\ListaAsistenciaNomina;
 use App\Services\SeccionService;
 use Carbon\CarbonImmutable;
@@ -37,7 +38,29 @@ class ListaAsistenciaController extends Controller
     {
         $secciones = SeccionService::disponiblesPara($request->user());
         $filtros = $this->filtros($request, $secciones);
-        $filas = $this->consulta($request, $filtros)
+        $formato = validator([
+            'formato' => $request->input('formato', 'base_datos'),
+        ], [
+            'formato' => ['required', Rule::in(['base_datos', 'lista'])],
+        ])->validate()['formato'];
+
+        $consulta = $this->consulta($request, $filtros);
+
+        if ($formato === 'lista') {
+            $filas = $consulta
+                ->orderBy('nombre_completo')
+                ->orderBy('clave')
+                ->orderBy('fecha')
+                ->get();
+            $archivo = "lista_asistencia_lista_{$filtros['desde']}_{$filtros['hasta']}.xlsx";
+
+            return Excel::download(
+                new ListaAsistenciaMatrizExport($filas, $filtros['desde'], $filtros['hasta']),
+                $archivo,
+            );
+        }
+
+        $filas = $consulta
             ->orderBy('fecha')
             ->orderBy('nombre_completo')
             ->get();

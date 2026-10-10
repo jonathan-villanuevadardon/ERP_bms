@@ -79,9 +79,9 @@
             </table>
             @if($puedeGestionar)
             <div class="d-flex flex-wrap justify-content-end gap-2 p-3 border-top">
-                <button type="submit" formaction="{{ route('viaticos.rechazar') }}" class="btn btn-outline-danger" id="rechazar-seleccionados" disabled>Rechazar seleccionados</button>
+                <button type="submit" formaction="{{ route('viaticos.rechazar', absolute: false) }}" class="btn btn-outline-danger" id="rechazar-seleccionados" disabled>Rechazar seleccionados</button>
                 @if($puedeAprobar)
-                <button type="submit" formaction="{{ route('viaticos.aprobar') }}" class="btn btn-success" id="aprobar-seleccionados" disabled>Aprobar seleccionados</button>
+                <button type="submit" formaction="{{ route('viaticos.aprobar', absolute: false) }}" class="btn btn-success" id="aprobar-seleccionados" disabled>Aprobar seleccionados</button>
                 @endif
             </div>
             @endif

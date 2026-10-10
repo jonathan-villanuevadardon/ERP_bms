@@ -167,13 +167,19 @@ class ViaticoController extends Controller
                     ]);
                 }
 
-                $viatico->update([
+                $guardado = $viatico->forceFill([
                     'estatus_aprobacion' => 'APROBADO',
                     'usuario_revisa' => $usuario,
                     'usuario_aprueba' => $usuario,
                     'fecha_revision' => $ahora,
                     'fecha_aprobacion' => $ahora,
-                ]);
+                ])->save();
+
+                if (! $guardado) {
+                    throw ValidationException::withMessages([
+                        'viaticos' => "No fue posible aprobar el folio {$viatico->folio_ingreso}.",
+                    ]);
+                }
             }
         });
 
@@ -199,11 +205,17 @@ class ViaticoController extends Controller
                     ]);
                 }
 
-                $viatico->update([
+                $guardado = $viatico->forceFill([
                     'estatus_aprobacion' => 'RECHAZADO',
                     'usuario_revisa' => $usuario,
                     'fecha_revision' => now(),
-                ]);
+                ])->save();
+
+                if (! $guardado) {
+                    throw ValidationException::withMessages([
+                        'viaticos' => "No fue posible rechazar el folio {$viatico->folio_ingreso}.",
+                    ]);
+                }
             }
         });
 
