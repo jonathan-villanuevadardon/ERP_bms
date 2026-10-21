@@ -17,8 +17,17 @@ class SqlServerConnector extends BaseSqlServerConnector
     /**
      * Crea el conector indicando el controlador PDO preferido.
      */
-    public function __construct(private readonly string $preferredDriver = 'sqlsrv')
+    public function __construct(private readonly string $preferredDriver = 'sqlsrv') {}
+
+    /**
+     * Establece un formato de fecha compatible con los timestamps de Laravel.
+     */
+    public function connect(array $config)
     {
+        $connection = parent::connect($config);
+        $connection->exec('SET DATEFORMAT ymd');
+
+        return $connection;
     }
 
     /**

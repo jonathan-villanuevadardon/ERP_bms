@@ -1,0 +1,69 @@
+FROM node:20-bookworm-slim AS frontend
+
+WORKDIR /app
+COPY package.json vite.config.js ./
+COPY resources ./resources
+
+RUN npm install --no-audit --no-fund \
+    && npm run build
+
+FROM composer:2 AS dependencies
+
+WORKDIR /app
+COPY composer.json composer.lock ./
+
+RUN composer install \
+    --no-interaction \
+    --no-progress \
+    --no-scripts \
+    --prefer-dist \
+    --ignore-platform-req=ext-gd
+
+FROM php:8.3-apache
+
+ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        freetds-dev \
+        libfreetype6-dev \
+        libicu-dev \
+        libjpeg62-turbo-dev \
+        libonig-dev \
+        libpng-dev \
+        libxml2-dev \
+        libzip-dev \
+        gnupg2 \
+        unixodbc-dev \
+        unzip \
+    && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
+    && curl -fsSL https://packages.microsoft.com/config/debian/12/prod.list -o /etc/apt/sources.list.d/mssql-release.list \
+    && apt-get update \
+    && ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql18 \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j"$(nproc)" bcmath gd intl mbstring pdo_dblib zip \
+    && pecl install sqlsrv pdo_sqlsrv \
+    && docker-php-ext-enable sqlsrv pdo_sqlsrv \
+    && a2enmod rewrite \
+    && printf 'ServerName localhost\n' > /etc/apache2/conf-available/servername.conf \
+    && a2enconf servername \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /var/www/html
+COPY . .
+COPY --from=dependencies /app/vendor ./vendor
+COPY --from=frontend /app/public/build ./public/build
+COPY docker/apache/000-default.conf /etc/apache2/sites-available/000-default.conf
+
+RUN php artisan package:discover --ansi \
+    && mkdir -p storage/framework/cache/data storage/framework/cache/laravel-excel storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R ug+rwX storage bootstrap/cache
+
+EXPOSE 80
+
+CMD ["apache2-foreground"]
