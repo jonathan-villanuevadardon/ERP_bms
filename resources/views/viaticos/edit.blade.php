@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <div><a href="{{ route('viaticos.index') }}" class="btn btn-sm btn-outline-secondary">Volver</a><h1 class="h3 mt-2 mb-0">Revisar {{ $viatico->folio_ingreso }}</h1></div>
+    <div><a href="{{ route('viaticos.index') }}" class="btn btn-sm btn-outline-secondary">Volver</a><h1 class="h3 mt-2 mb-0">Revisar {{ $viatico->folio_ingreso }}</h1><p class="small text-muted mb-0">Registrado el {{ $viatico->fecha_ingreso?->format('d/m/Y H:i') ?: 'Sin fecha' }}</p></div>
     <span class="badge {{ $viatico->estatus_aprobacion === 'PENDIENTE_REVISION' ? 'text-bg-warning' : ($viatico->estatus_aprobacion === 'APROBADO' ? 'text-bg-success' : 'text-bg-danger') }}">{{ str_replace('_', ' ', $viatico->estatus_aprobacion) }}</span>
 </div>
 
@@ -48,6 +48,22 @@
                 </form>
                 @endif
             </div>
+            @if($puedeAprobar && $viatico->estatus_aprobacion === 'PENDIENTE_REVISION')
+            <div class="card-footer bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <span class="small text-muted">La aprobación utiliza los datos guardados actualmente.</span>
+                <form method="POST" action="{{ route('viaticos.aprobar', absolute: false) }}" onsubmit="return confirm('¿Aprobar este viático?')">
+                    @csrf
+                    <input type="hidden" name="viaticos[]" value="{{ $viatico->id_viatico }}">
+                    <input type="hidden" name="desde_revision" value="1">
+                    <button type="submit" class="btn btn-success" @disabled(blank($viatico->semana_pagar))>
+                        <i class="bi bi-check-circle me-1"></i>Aprobar viático
+                    </button>
+                    @if(blank($viatico->semana_pagar))
+                        <div class="form-text text-end">Primero asigna y guarda la semana de pago.</div>
+                    @endif
+                </form>
+            </div>
+            @endif
         </div>
     </div>
 </div>

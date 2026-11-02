@@ -62,7 +62,7 @@
                     @endif
                     @if(auth()->user()->esAdmin() || auth()->user()->perfil->puede_gestionar_viaticos)
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ route('viaticos.index') }}">Viáticos</a>
+                        <a class="nav-link" href="{{ route('viaticos.index', ['reiniciar_filtros' => 1]) }}">Viáticos</a>
                     </li>
                     @endif
                     @if(auth()->user()->esAdmin())

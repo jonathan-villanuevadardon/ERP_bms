@@ -10,10 +10,20 @@
         <h1 class="h3 mb-1">Revisión de viáticos</h1>
         <p class="text-muted mb-0">Consulta boletos capturados y valida su pago.</p>
     </div>
-    <div class="d-flex align-items-center gap-2">
+    <div class="d-flex flex-wrap align-items-center justify-content-end gap-2">
         <a href="{{ route('viaticos.crear') }}" class="btn btn-sm btn-primary">Capturar viático</a>
-        <form method="GET" class="d-flex align-items-center gap-2">
-            <label for="estatus" class="small text-muted">Estatus</label>
+        <form method="GET" action="{{ route('viaticos.index') }}" class="d-flex flex-wrap align-items-center gap-2">
+            <label for="seccion" class="small text-muted">Área</label>
+            <select name="seccion" id="seccion" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+                <option value="">Todas las áreas</option>
+                @foreach($secciones as $seccion)
+                    <option value="{{ $seccion }}" @selected($seccionSeleccionada === $seccion)>{{ $seccion }}</option>
+                @endforeach
+                @if($puedeVerErroresAsignacion)
+                    <option value="{{ $valorSinAsignacion }}" @selected($seccionSeleccionada === $valorSinAsignacion)>Error de asignación</option>
+                @endif
+            </select>
+            <label for="estatus" class="small text-muted ms-1">Estatus</label>
             <select name="estatus" id="estatus" class="form-select form-select-sm" onchange="this.form.submit()">
                 <option value="">Pendientes y aprobados</option>
                 <option value="PENDIENTE_REVISION" @selected($estatusSeleccionado === 'PENDIENTE_REVISION')>Pendientes</option>
@@ -35,6 +45,7 @@
                         <th>Folio / empleado</th>
                         <th>Boleto</th>
                         <th>Ruta y fecha</th>
+                        <th>Registrado</th>
                         <th class="text-end">Costo</th>
                         <th>Semana de pago</th>
                         <th>Estatus</th>
@@ -52,9 +63,10 @@
                             @endif
                         </td>
                         @endif
-                        <td><strong>{{ $viatico->folio_ingreso }}</strong><br><span class="small text-muted">#{{ $viatico->numero_empleado }} · {{ $viatico->nombre_persona }}</span></td>
+                        <td><strong>{{ $viatico->folio_ingreso }}</strong><br><span class="small text-muted">#{{ $viatico->numero_empleado }} · {{ $viatico->nombre_persona }}</span>@if($seccionSeleccionada === $valorSinAsignacion)<br><span class="badge text-bg-danger mt-1">Error de asignación</span>@endif</td>
                         <td><span class="text-uppercase small">{{ $viatico->tipo_transporte }}</span><br>{{ $viatico->transportista }}<br><span class="small text-muted">{{ $viatico->referencia_boleto ?: 'Sin referencia' }}</span></td>
                         <td>{{ $viatico->origen }} → {{ $viatico->destino }}<br><span class="small text-muted">{{ $viatico->fecha_salida?->format('d/m/Y') }}</span></td>
+                        <td class="text-nowrap">{{ $viatico->fecha_ingreso?->format('d/m/Y') }}<br><span class="small text-muted">{{ $viatico->fecha_ingreso?->format('H:i') }}</span></td>
                         <td class="text-end">${{ number_format((float) $viatico->costo, 2) }}</td>
                         <td>{{ $viatico->semana_pagar ?: 'Sin asignar' }}</td>
                         <td>
@@ -73,7 +85,7 @@
                         @endif
                     </tr>
                 @empty
-                    <tr><td colspan="{{ $puedeGestionar ? 8 : 6 }}" class="text-center text-muted py-4">No hay viáticos para mostrar.</td></tr>
+                    <tr><td colspan="{{ $puedeGestionar ? 9 : 7 }}" class="text-center text-muted py-4">No hay viáticos para mostrar.</td></tr>
                 @endforelse
                 </tbody>
             </table>
@@ -90,6 +102,34 @@
 </div>
 
 <div class="mt-3">{{ $viaticos->links() }}</div>
+
+@if(session('continuar_revision'))
+<div class="modal fade" id="continuarRevisionModal" tabindex="-1" aria-labelledby="continuarRevisionTitulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title fs-5" id="continuarRevisionTitulo">Revisión terminada</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                @if($siguienteRevision)
+                    El viático fue procesado. ¿Deseas continuar con el siguiente pendiente de los filtros actuales?
+                @elseif($pendientesSinSemana > 0)
+                    Terminaste la revisión, pero hay boletos pendientes sin asignación de semana.
+                @else
+                    El viático fue procesado y no quedan pendientes con los filtros actuales.
+                @endif
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Salir al visor</button>
+                @if($siguienteRevision)
+                    <a href="{{ route('viaticos.editar', $siguienteRevision) }}" class="btn btn-primary">Seguir revisando pendientes</a>
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
+@endif
 @endsection
 
 @push('scripts')
@@ -118,5 +158,10 @@
         }
     });
 })();
+
+const continuarRevision = document.getElementById('continuarRevisionModal');
+if (continuarRevision) {
+    new bootstrap.Modal(continuarRevision).show();
+}
 </script>
 @endpush

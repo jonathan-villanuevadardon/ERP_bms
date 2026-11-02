@@ -93,6 +93,7 @@ class ViaticoApprovalTest extends TestCase
 
         $this->crearEmpleado(100, 'Empleado Planta', 'PLANTA');
         $this->crearEmpleado(200, 'Empleado Tajo', 'TAJO');
+        $this->crearEmpleado(300, 'Empleado Taller', 'TALLER 1');
 
         $perfil = Perfil::query()->create([
             'nombre' => 'Aprobadores',
@@ -311,14 +312,203 @@ class ViaticoApprovalTest extends TestCase
             ->assertDontSee('Empleado Tajo');
     }
 
-    private function crearViatico(?int $numeroEmpleado = null, string $folio = 'VIA-2026-PRUEBA', ?string $boleto = null): int
+    public function test_aprobador_ve_boton_de_aprobacion_al_revisar_boleto(): void
     {
+        $id = $this->crearViatico(100, 'VIA-APROBAR', 'boleto');
+
+        $this->actingAs($this->usuario)
+            ->get(route('viaticos.editar', $id))
+            ->assertOk()
+            ->assertSee('Aprobar viático')
+            ->assertSee('action="/viaticos/aprobar"', false);
+    }
+
+    public function test_capturista_no_ve_boton_de_aprobacion_al_revisar_boleto(): void
+    {
+        $perfil = Perfil::query()->create([
+            'nombre' => 'Capturistas sin aprobación',
+            'slug' => 'capturistas-sin-aprobacion',
+            'puede_gestionar_viaticos' => true,
+            'puede_aprobar' => false,
+        ]);
+        $usuario = Usuario::query()->create([
+            'name' => 'Usuario Capturista',
+            'email' => 'capturista-revision@example.test',
+            'password' => 'password',
+            'perfil_id' => $perfil->id,
+            'activo' => true,
+        ]);
+        $id = $this->crearViatico(100, 'VIA-CAPTURA', 'boleto');
+
+        $this->actingAs($usuario)
+            ->get(route('viaticos.editar', $id))
+            ->assertOk()
+            ->assertDontSee('Aprobar viático')
+            ->assertDontSee('action="/viaticos/aprobar"', false);
+    }
+
+    public function test_filtro_de_area_muestra_solo_viaticos_asignados(): void
+    {
+        $this->crearViatico(100, 'VIA-PLANTA');
+        $this->crearViatico(200, 'VIA-TAJO');
+        $this->crearViatico(300, 'VIA-TALLER');
+
+        $this->actingAs($this->usuario)
+            ->get(route('viaticos.index', ['seccion' => 'PLANTA']))
+            ->assertOk()
+            ->assertSee('VIA-PLANTA')
+            ->assertDontSee('VIA-TAJO')
+            ->assertDontSee('VIA-TALLER');
+
+        $this->actingAs($this->usuario)
+            ->get(route('viaticos.index', ['seccion' => 'TALLER 1']))
+            ->assertOk()
+            ->assertSee('VIA-TALLER')
+            ->assertDontSee('VIA-PLANTA')
+            ->assertDontSee('VIA-TAJO');
+    }
+
+    public function test_filtro_de_error_muestra_numeros_sin_empleado(): void
+    {
+        $this->crearViatico(100, 'VIA-PLANTA');
+        $this->crearViatico(999, 'VIA-ERROR');
+
+        $this->actingAs($this->usuario)
+            ->get(route('viaticos.index', ['seccion' => '__sin_asignacion__']))
+            ->assertOk()
+            ->assertSee('VIA-ERROR')
+            ->assertSee('Error de asignación')
+            ->assertDontSee('VIA-PLANTA');
+    }
+
+    public function test_perfil_restringido_no_puede_filtrar_errores_sin_seccion(): void
+    {
+        $usuario = $this->crearUsuarioSeccion('PLANTA');
+        $this->crearViatico(999, 'VIA-ERROR');
+
+        $this->actingAs($usuario)
+            ->get(route('viaticos.index', ['seccion' => '__sin_asignacion__']))
+            ->assertRedirect()
+            ->assertSessionHasErrors('seccion');
+    }
+
+    public function test_listado_muestra_fecha_de_registro(): void
+    {
+        $this->crearViatico(100, 'VIA-FECHA', null, '2026-10-25 14:35:00');
+
+        $this->actingAs($this->usuario)
+            ->get(route('viaticos.index'))
+            ->assertOk()
+            ->assertSee('25/10/2026')
+            ->assertSee('14:35');
+    }
+
+    public function test_filtros_se_mantienen_hasta_entrar_desde_el_menu_superior(): void
+    {
+        $pendiente = $this->crearViatico(100, 'VIA-PLANTA-PENDIENTE');
+        $aprobado = $this->crearViatico(100, 'VIA-PLANTA-APROBADO');
+        DB::table('tb_viaticos')->where('id_viatico', $aprobado)->update(['estatus_aprobacion' => 'APROBADO']);
+        $this->crearViatico(200, 'VIA-TAJO-PENDIENTE');
+
+        $this->actingAs($this->usuario)
+            ->get(route('viaticos.index', [
+                'estatus' => 'PENDIENTE_REVISION',
+                'seccion' => 'PLANTA',
+            ]))
+            ->assertOk()
+            ->assertSessionHas('viaticos.filtros', [
+                'estatus' => 'PENDIENTE_REVISION',
+                'seccion' => 'PLANTA',
+            ]);
+
+        $this->get(route('viaticos.editar', $pendiente))->assertOk();
+        $this->get(route('viaticos.index'))
+            ->assertOk()
+            ->assertSee('VIA-PLANTA-PENDIENTE')
+            ->assertDontSee('VIA-PLANTA-APROBADO')
+            ->assertDontSee('VIA-TAJO-PENDIENTE')
+            ->assertSee('value="PLANTA" selected', false)
+            ->assertSee('value="PENDIENTE_REVISION" selected', false)
+            ->assertSee(route('viaticos.index', ['reiniciar_filtros' => 1]), false);
+
+        $this->get(route('viaticos.index', ['reiniciar_filtros' => 1]))
+            ->assertRedirectToRoute('viaticos.index')
+            ->assertSessionMissing('viaticos.filtros');
+
+        $this->get(route('viaticos.index'))
+            ->assertOk()
+            ->assertSee('VIA-PLANTA-PENDIENTE')
+            ->assertSee('VIA-PLANTA-APROBADO')
+            ->assertSee('VIA-TAJO-PENDIENTE');
+    }
+
+    public function test_aprobar_desde_revision_ofrece_continuar_con_el_siguiente_pendiente(): void
+    {
+        $actual = $this->crearViatico(100, 'VIA-ACTUAL', null, '2026-10-25 11:00:00');
+        $sinSemana = $this->crearViatico(100, 'VIA-SIN-SEMANA', null, '2026-10-25 10:30:00');
+        $siguiente = $this->crearViatico(100, 'VIA-SIGUIENTE', null, '2026-10-25 10:00:00');
+        $this->crearViatico(200, 'VIA-OTRA-AREA', null, '2026-10-25 09:00:00');
+        DB::table('tb_viaticos')->where('id_viatico', $sinSemana)->update(['semana_pagar' => null]);
+
+        $this->actingAs($this->usuario)->get(route('viaticos.index', [
+            'estatus' => 'PENDIENTE_REVISION',
+            'seccion' => 'PLANTA',
+        ]));
+
+        $this->get(route('viaticos.editar', $actual))
+            ->assertOk()
+            ->assertSee('name="desde_revision" value="1"', false);
+
+        $this->post(route('viaticos.aprobar'), [
+            'viaticos' => [$actual],
+            'desde_revision' => 1,
+        ])->assertRedirectToRoute('viaticos.index')
+            ->assertSessionHas('continuar_revision', true);
+
+        $this->get(route('viaticos.index'))
+            ->assertOk()
+            ->assertSee('Revisión terminada')
+            ->assertSee('Seguir revisando pendientes')
+            ->assertSee('Salir al visor')
+            ->assertSee(route('viaticos.editar', $siguiente), false)
+            ->assertDontSee('VIA-OTRA-AREA');
+    }
+
+    public function test_aprobador_recibe_aviso_si_solo_quedan_pendientes_sin_semana(): void
+    {
+        $actual = $this->crearViatico(100, 'VIA-ACTUAL', null, '2026-10-25 11:00:00');
+        $sinSemana = $this->crearViatico(100, 'VIA-SIN-SEMANA', null, '2026-10-25 10:00:00');
+        DB::table('tb_viaticos')->where('id_viatico', $sinSemana)->update(['semana_pagar' => null]);
+
+        $this->actingAs($this->usuario)->get(route('viaticos.index', [
+            'estatus' => 'PENDIENTE_REVISION',
+            'seccion' => 'PLANTA',
+        ]));
+
+        $this->post(route('viaticos.aprobar'), [
+            'viaticos' => [$actual],
+            'desde_revision' => 1,
+        ])->assertRedirectToRoute('viaticos.index');
+
+        $this->get(route('viaticos.index'))
+            ->assertOk()
+            ->assertSee('Terminaste la revisión, pero hay boletos pendientes sin asignación de semana.')
+            ->assertSee('Salir al visor')
+            ->assertDontSee('Seguir revisando pendientes');
+    }
+
+    private function crearViatico(
+        ?int $numeroEmpleado = null,
+        string $folio = 'VIA-2026-PRUEBA',
+        ?string $boleto = null,
+        string $fechaIngreso = '2026-10-25 10:00:00',
+    ): int {
         return DB::table('tb_viaticos')->insertGetId([
             'folio_ingreso' => $folio,
             'numero_empleado' => $numeroEmpleado,
             'estatus_aprobacion' => 'PENDIENTE_REVISION',
             'semana_pagar' => '2026-W41',
-            'fecha_ingreso' => now(),
+            'fecha_ingreso' => $fechaIngreso,
             'imagen_mime' => $boleto === null ? null : 'application/pdf',
             'imagen_nombre' => $boleto === null ? null : 'boleto.pdf',
             'imagen_boleto' => $boleto,

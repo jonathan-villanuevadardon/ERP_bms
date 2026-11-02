@@ -19,7 +19,7 @@ RUN composer install \
     --prefer-dist \
     --ignore-platform-req=ext-gd
 
-FROM php:8.3-apache
+FROM php:8.3.36-apache
 
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 

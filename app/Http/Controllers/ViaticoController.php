@@ -16,6 +16,10 @@ use PDOException;
 
 class ViaticoController extends Controller
 {
+    private const FILTROS_SESION = 'viaticos.filtros';
+
+    private const SIN_ASIGNACION = '__sin_asignacion__';
+
     private const ESTATUS = [
         'PENDIENTE_REVISION',
         'APROBADO',
@@ -24,11 +28,66 @@ class ViaticoController extends Controller
 
     public function index(Request $request)
     {
-        $status = $request->validate([
-            'estatus' => ['nullable', Rule::in(self::ESTATUS)],
-        ])['estatus'] ?? null;
+        if ($request->boolean('reiniciar_filtros')) {
+            $request->session()->forget(self::FILTROS_SESION);
 
-        $consulta = $this->consultaVisible($request)
+            return redirect()->route('viaticos.index');
+        }
+
+        $secciones = SeccionService::disponiblesPara($request->user());
+        $puedeVerErroresAsignacion = SeccionService::permitidas($request->user()) === null;
+        $reglas = [
+            'estatus' => ['nullable', Rule::in(self::ESTATUS)],
+            'seccion' => [
+                'nullable',
+                Rule::in($puedeVerErroresAsignacion
+                    ? [...$secciones, self::SIN_ASIGNACION]
+                    : $secciones),
+            ],
+        ];
+
+        if ($request->hasAny(['estatus', 'seccion'])) {
+            $filtros = array_filter(
+                $request->validate($reglas),
+                fn ($valor) => filled($valor),
+            );
+            $request->session()->put(self::FILTROS_SESION, $filtros);
+        } else {
+            $guardados = $request->session()->get(self::FILTROS_SESION, []);
+            $estatus = $guardados['estatus'] ?? null;
+            $area = $guardados['seccion'] ?? null;
+            $areasPermitidas = $puedeVerErroresAsignacion
+                ? [...$secciones, self::SIN_ASIGNACION]
+                : $secciones;
+            $filtros = array_filter([
+                'estatus' => in_array($estatus, self::ESTATUS, true) ? $estatus : null,
+                'seccion' => in_array($area, $areasPermitidas, true) ? $area : null,
+            ]);
+            $request->session()->put(self::FILTROS_SESION, $filtros);
+        }
+
+        $status = $filtros['estatus'] ?? null;
+        $seccion = $filtros['seccion'] ?? null;
+
+        $consulta = $this->consultaVisible($request);
+        if ($seccion === self::SIN_ASIGNACION) {
+            $comparacion = $this->comparacionEmpleado('empleado_filtro');
+            $consulta->whereNotExists(function ($empleados) use ($comparacion) {
+                $empleados->selectRaw('1')
+                    ->from('HCBMS_ALL_OP as empleado_filtro')
+                    ->whereRaw($comparacion);
+            });
+        } elseif ($seccion) {
+            $comparacion = $this->comparacionEmpleado('empleado_filtro');
+            $consulta->whereExists(function ($empleados) use ($comparacion, $seccion) {
+                $empleados->selectRaw('1')
+                    ->from('HCBMS_ALL_OP as empleado_filtro')
+                    ->whereRaw($comparacion)
+                    ->where(DB::raw('LTRIM(RTRIM(empleado_filtro.seccion))'), $seccion);
+            });
+        }
+
+        $consulta
             ->select([
                 'id_viatico', 'folio_ingreso', 'numero_empleado', 'tipo_transporte',
                 'costo', 'origen', 'destino', 'fecha_salida', 'nombre_persona',
@@ -41,9 +100,40 @@ class ViaticoController extends Controller
             ->orderByRaw("CASE WHEN estatus_aprobacion = 'PENDIENTE_REVISION' THEN 0 ELSE 1 END")
             ->orderByDesc('fecha_ingreso');
 
+        $siguienteRevision = null;
+        $pendientesSinSemana = 0;
+        $puedeAprobar = $request->user()->esAdmin()
+            || (bool) $request->user()->perfil?->puede_aprobar;
+
+        if ($puedeAprobar && $request->session()->has('continuar_revision')) {
+            $pendientes = (clone $consulta)
+                ->where('estatus_aprobacion', 'PENDIENTE_REVISION');
+            $siguienteRevision = (clone $pendientes)
+                ->whereNotNull('semana_pagar')
+                ->whereRaw("LTRIM(RTRIM(semana_pagar)) <> ''")
+                ->first();
+
+            if (! $siguienteRevision) {
+                $pendientesSinSemana = (clone $pendientes)
+                    ->where(function ($query) {
+                        $query->whereNull('semana_pagar')
+                            ->orWhereRaw("LTRIM(RTRIM(semana_pagar)) = ''");
+                    })
+                    ->count();
+            }
+        }
+
+        $viaticos = $consulta->paginate(25)->withQueryString();
+
         return view('viaticos.index', [
-            'viaticos' => $consulta->paginate(25)->withQueryString(),
+            'viaticos' => $viaticos,
+            'siguienteRevision' => $siguienteRevision,
+            'pendientesSinSemana' => $pendientesSinSemana,
             'estatusSeleccionado' => $status,
+            'seccionSeleccionada' => $seccion,
+            'secciones' => $secciones,
+            'puedeVerErroresAsignacion' => $puedeVerErroresAsignacion,
+            'valorSinAsignacion' => self::SIN_ASIGNACION,
         ]);
     }
 
@@ -123,12 +213,16 @@ class ViaticoController extends Controller
                 'id_viatico', 'folio_ingreso', 'numero_empleado', 'tipo_transporte',
                 'costo', 'origen', 'destino', 'fecha_salida', 'nombre_persona',
                 'transportista', 'referencia_boleto', 'estatus_aprobacion',
-                'semana_pagar', 'imagen_mime',
+                'semana_pagar', 'imagen_mime', 'fecha_ingreso',
             ])
             ->whereKey($viatico)
             ->firstOrFail();
 
-        return view('viaticos.edit', compact('viatico'));
+        return view('viaticos.edit', [
+            'viatico' => $viatico,
+            'puedeAprobar' => $request->user()->esAdmin()
+                || (bool) $request->user()->perfil?->puede_aprobar,
+        ]);
     }
 
     public function update(Request $request, int $viatico)
@@ -221,7 +315,14 @@ class ViaticoController extends Controller
             }
         });
 
-        return redirect()->route('viaticos.index')->with('success', 'Viático(s) aprobado(s) correctamente.');
+        $redirect = redirect()->route('viaticos.index')
+            ->with('success', 'Viático(s) aprobado(s) correctamente.');
+
+        if ($request->boolean('desde_revision')) {
+            $redirect->with('continuar_revision', true);
+        }
+
+        return $redirect;
     }
 
     public function rechazar(Request $request)
@@ -298,9 +399,7 @@ class ViaticoController extends Controller
             return $consulta;
         }
 
-        $comparacion = DB::connection()->getDriverName() === 'sqlite'
-            ? 'CAST(empleado_viatico.clave AS INTEGER) = CAST(tb_viaticos.numero_empleado AS INTEGER)'
-            : 'empleado_viatico.clave = TRY_CONVERT(BIGINT, tb_viaticos.numero_empleado)';
+        $comparacion = $this->comparacionEmpleado('empleado_viatico');
 
         return $consulta->whereExists(function ($empleados) use ($secciones, $comparacion) {
             $empleados->selectRaw('1')
@@ -308,6 +407,13 @@ class ViaticoController extends Controller
                 ->whereRaw($comparacion)
                 ->whereIn(DB::raw('LTRIM(RTRIM(empleado_viatico.seccion))'), $secciones);
         });
+    }
+
+    private function comparacionEmpleado(string $alias): string
+    {
+        return DB::connection()->getDriverName() === 'sqlite'
+            ? "CAST({$alias}.clave AS INTEGER) = CAST(tb_viaticos.numero_empleado AS INTEGER)"
+            : "{$alias}.clave = TRY_CONVERT(BIGINT, tb_viaticos.numero_empleado)";
     }
 
     private function empleadoAutorizado(Request $request, int $clave): array
