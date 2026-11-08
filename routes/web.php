@@ -1,12 +1,15 @@
 <?php
 
+use App\Http\Controllers\AlmacenConfiguracionController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DescansoController;
 use App\Http\Controllers\IncapacidadController;
+use App\Http\Controllers\InventarioController;
 use App\Http\Controllers\ListaAsistenciaController;
 use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\PermisoController;
+use App\Http\Controllers\PrestamoHerramientaController;
 use App\Http\Controllers\RolDescansoController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\VacacionController;
@@ -165,6 +168,31 @@ Route::middleware(['auth', VerificarPerfil::class])->group(function () {
         Route::get('{viatico}/imagen', [ViaticoController::class, 'imagen'])->name('imagen');
         Route::post('aprobar', [ViaticoController::class, 'aprobar'])->middleware('permiso:puede_aprobar')->name('aprobar');
         Route::post('rechazar', [ViaticoController::class, 'rechazar'])->name('rechazar');
+    });
+
+    Route::prefix('inventario')->name('inventario.')->middleware('permiso:puede_gestionar_inventario')->group(function () {
+        Route::get('/', [InventarioController::class, 'index'])->name('index');
+        Route::get('articulos/crear', [InventarioController::class, 'create'])->name('articulos.crear');
+        Route::post('articulos', [InventarioController::class, 'store'])->name('articulos.guardar');
+        Route::get('articulos/{articulo}/editar', [InventarioController::class, 'edit'])->name('articulos.editar');
+        Route::put('articulos/{articulo}', [InventarioController::class, 'update'])->name('articulos.actualizar');
+        Route::get('almacenes', [AlmacenConfiguracionController::class, 'index'])->name('almacenes');
+        Route::post('almacenes', [AlmacenConfiguracionController::class, 'store'])->name('almacenes.guardar');
+        Route::put('almacenes/{almacen}', [AlmacenConfiguracionController::class, 'update'])->name('almacenes.actualizar');
+        Route::post('almacenes/{almacen}/ubicaciones', [AlmacenConfiguracionController::class, 'storeUbicacion'])->name('ubicaciones.guardar');
+        Route::put('existencias/{existencia}/reglas', [AlmacenConfiguracionController::class, 'updateReglas'])->name('existencias.reglas');
+        Route::get('movimientos', [InventarioController::class, 'movimientos'])->name('movimientos');
+        Route::get('movimientos/crear', [InventarioController::class, 'crearMovimiento'])->name('movimientos.crear');
+        Route::post('movimientos', [InventarioController::class, 'guardarMovimiento'])->name('movimientos.guardar');
+        Route::redirect('ubicaciones', '/inventario/almacenes')->name('ubicaciones');
+    });
+
+    Route::prefix('prestamos-herramientas')->name('prestamos-herramientas.')->middleware('permiso:puede_gestionar_prestamos_herramientas')->group(function () {
+        Route::get('/', [PrestamoHerramientaController::class, 'index'])->name('index');
+        Route::get('crear', [PrestamoHerramientaController::class, 'create'])->name('crear');
+        Route::post('/', [PrestamoHerramientaController::class, 'store'])->name('guardar');
+        Route::post('{prestamo}/devolver', [PrestamoHerramientaController::class, 'devolver'])->name('devolver');
+        Route::get('historial', [PrestamoHerramientaController::class, 'historial'])->name('historial');
     });
 
     /*

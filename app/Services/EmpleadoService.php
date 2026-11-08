@@ -93,6 +93,31 @@ class EmpleadoService
     }
 
     /**
+     * Selector ligero para módulos que no requieren calcular asistencia.
+     */
+    public static function buscarParaSelector(?string $termino, int $limite = 30, ?array $seccionesPermitidas = null): Collection
+    {
+        if (blank($termino)) {
+            return collect();
+        }
+
+        $termino = trim($termino);
+
+        return Empleado::query()
+            ->when($seccionesPermitidas !== null, fn ($query) => $query->whereIn('seccion', $seccionesPermitidas))
+            ->where(function ($query) use ($termino) {
+                $query->where('Nombre_completo', 'like', "%{$termino}%")
+                    ->orWhere('clave', 'like', "%{$termino}%")
+                    ->orWhere('dept_name', 'like', "%{$termino}%")
+                    ->orWhere('seccion', 'like', "%{$termino}%");
+            })
+            ->orderBy('Nombre_completo')
+            ->limit($limite)
+            ->get()
+            ->map(fn (Empleado $empleado) => self::normalizar($empleado));
+    }
+
+    /**
      * Obtener el total de días trabajados por un empleado en un rango de fechas.
      *
      * Consulta la tabla de hechos (materializada) para un conteo rápido.

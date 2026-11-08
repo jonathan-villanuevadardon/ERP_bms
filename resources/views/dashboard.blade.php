@@ -85,6 +85,18 @@
         <a href="{{ route('viaticos.index') }}" class="btn btn-sm btn-outline-dark">Revisar</a>
     </div></div></div>
     @endif
+    @if($user->esAdmin() || $user->perfil->puede_gestionar_inventario)
+    <div class="col-md-4 col-lg-3"><div class="card shadow-sm h-100 border-primary"><div class="card-body">
+        <h5 class="card-title"><i class="bi bi-box-seam"></i> Inventario y costos</h5><p class="card-text text-muted small">Controla varios almacenes por sección HC, ubicaciones, costos y alertas.</p>
+        <div class="d-flex flex-wrap gap-2"><a href="{{ route('inventario.index') }}" class="btn btn-sm btn-outline-primary">Ver existencias</a><a href="{{ route('inventario.almacenes') }}" class="btn btn-sm btn-primary">Configurar almacenes</a></div>
+    </div></div></div>
+    @endif
+    @if($user->esAdmin() || $user->perfil->puede_gestionar_prestamos_herramientas)
+    <div class="col-md-4 col-lg-3"><div class="card shadow-sm h-100 border-warning"><div class="card-body">
+        <h5 class="card-title"><i class="bi bi-tools"></i> Préstamos de herramientas</h5><p class="card-text text-muted small">Registra salidas, resguardos, devoluciones y responsables.</p>
+        <a href="{{ route('prestamos-herramientas.index') }}" class="btn btn-sm btn-outline-warning">Gestionar préstamos</a>
+    </div></div></div>
+    @endif
 </div>
 
 @if($user->esAdmin() || $user->perfil->puede_aprobar)

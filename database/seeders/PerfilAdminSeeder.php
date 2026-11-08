@@ -36,6 +36,8 @@ class PerfilAdminSeeder extends Seeder
                 'es_admin' => true,
                 'puede_ver_visor' => true,
                 'puede_gestionar_viaticos' => true,
+                'puede_gestionar_inventario' => true,
+                'puede_gestionar_prestamos_herramientas' => true,
                 'secciones' => null,
             ]
         );

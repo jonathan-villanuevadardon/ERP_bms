@@ -32,6 +32,8 @@ class PerfilController extends Controller
         'puede_gestionar_incapacidades',
         'puede_ver_lista_asistencia',
         'puede_gestionar_viaticos',
+        'puede_gestionar_inventario',
+        'puede_gestionar_prestamos_herramientas',
     ];
 
     /**

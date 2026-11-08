@@ -65,6 +65,21 @@
                         <a class="nav-link" href="{{ route('viaticos.index', ['reiniciar_filtros' => 1]) }}">Viáticos</a>
                     </li>
                     @endif
+                    @if(auth()->user()->esAdmin() || auth()->user()->perfil->puede_gestionar_inventario)
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Inventario</a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ route('inventario.index') }}">Existencias por almacén</a></li>
+                            <li><a class="dropdown-item" href="{{ route('inventario.movimientos') }}">Movimientos y transferencias</a></li>
+                            <li><a class="dropdown-item" href="{{ route('inventario.almacenes') }}">Almacenes y ubicaciones</a></li>
+                        </ul>
+                    </li>
+                    @endif
+                    @if(auth()->user()->esAdmin() || auth()->user()->perfil->puede_gestionar_prestamos_herramientas)
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('prestamos-herramientas.index') }}">Préstamos</a>
+                    </li>
+                    @endif
                     @if(auth()->user()->esAdmin())
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">

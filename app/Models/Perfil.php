@@ -43,6 +43,8 @@ class Perfil extends Model
         'puede_gestionar_incapacidades',
         'puede_ver_lista_asistencia',
         'puede_gestionar_viaticos',
+        'puede_gestionar_inventario',
+        'puede_gestionar_prestamos_herramientas',
         'secciones',
     ];
 
@@ -64,6 +66,8 @@ class Perfil extends Model
         'puede_gestionar_incapacidades' => 'boolean',
         'puede_ver_lista_asistencia' => 'boolean',
         'puede_gestionar_viaticos' => 'boolean',
+        'puede_gestionar_inventario' => 'boolean',
+        'puede_gestionar_prestamos_herramientas' => 'boolean',
     ];
 
     /**

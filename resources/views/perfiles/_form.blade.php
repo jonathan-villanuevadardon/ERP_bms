@@ -57,6 +57,18 @@
                 <span class="text-warning small"><i class="bi bi-exclamation-triangle"></i> Gestionar viáticos requiere ejecutar la migración pendiente.</span>
             @endif
         </div>
+        @if(in_array('puede_gestionar_inventario', $permisosDisponibles, true))
+        <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" id="puede_gestionar_inventario" name="puede_gestionar_inventario" value="1" @checked(old('puede_gestionar_inventario', $p?->puede_gestionar_inventario ?? false))>
+            <label for="puede_gestionar_inventario" class="form-check-label">Gestionar inventario y costos</label>
+        </div>
+        @endif
+        @if(in_array('puede_gestionar_prestamos_herramientas', $permisosDisponibles, true))
+        <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" id="puede_gestionar_prestamos_herramientas" name="puede_gestionar_prestamos_herramientas" value="1" @checked(old('puede_gestionar_prestamos_herramientas', $p?->puede_gestionar_prestamos_herramientas ?? false))>
+            <label for="puede_gestionar_prestamos_herramientas" class="form-check-label">Gestionar préstamos de herramientas</label>
+        </div>
+        @endif
     </div>
     <div class="col-md-6">
         <div class="form-check mb-2">
