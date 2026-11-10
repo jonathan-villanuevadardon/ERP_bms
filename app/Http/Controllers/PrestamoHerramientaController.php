@@ -56,14 +56,12 @@ class PrestamoHerramientaController extends Controller
 
     public function create(Request $request)
     {
+        $existenciaId = $request->integer('existencia_id') ?: (int) $request->old('existencia_id');
+
         return view('prestamos-herramientas.create', [
-            'existencias' => AlmacenExistencia::query()
-                ->where('cantidad', '>', 0)
-                ->whereHas('articulo', fn ($query) => $query->where('tipo', 'HERRAMIENTA')->where('activo', true))
-                ->whereHas('ubicacion', function ($query) use ($request) {
-                    $query->where('activo', true)->whereHas('almacen', fn ($almacen) => $almacen->visiblesPara($request->user())->where('activo', true));
-                })
-                ->with(['articulo', 'ubicacion.almacen'])->orderBy('articulo_id')->orderBy('ubicacion_id')->get(),
+            'existenciaSeleccionada' => $existenciaId
+                ? $this->existenciasDisponibles($request)->find($existenciaId)
+                : null,
             'empleados' => EmpleadoService::buscarParaSelector(
                 $request->input('termino'),
                 30,
@@ -71,6 +69,44 @@ class PrestamoHerramientaController extends Controller
             ),
             'empleadoSeleccionado' => $request->integer('numero_empleado') ?: null,
         ]);
+    }
+
+    public function buscarHerramientas(Request $request)
+    {
+        $data = $request->validate([
+            'q' => ['nullable', 'string', 'max:100'],
+        ]);
+        $termino = trim((string) ($data['q'] ?? ''));
+
+        if (mb_strlen($termino) < 2) {
+            return response()->json(['resultados' => []]);
+        }
+
+        $resultados = $this->existenciasDisponibles($request)
+            ->whereHas('articulo', function ($articulo) use ($termino) {
+                $articulo->where(function ($busqueda) use ($termino) {
+                    $busqueda->where('sku', 'like', "%{$termino}%")
+                        ->orWhere('nombre', 'like', "%{$termino}%")
+                        ->orWhere('numero_serie', 'like', "%{$termino}%");
+                });
+            })
+            ->orderBy('articulo_id')
+            ->orderBy('ubicacion_id')
+            ->limit(20)
+            ->get()
+            ->map(fn ($existencia) => [
+                'id' => $existencia->id,
+                'sku' => $existencia->articulo->sku,
+                'nombre' => $existencia->articulo->nombre,
+                'numero_serie' => $existencia->articulo->numero_serie,
+                'almacen' => $existencia->ubicacion->almacen->codigo,
+                'ubicacion' => $existencia->ubicacion->codigo,
+                'seccion' => $existencia->ubicacion->almacen->seccion,
+                'disponible' => (float) $existencia->cantidad,
+                'unidad' => $existencia->articulo->unidad_medida,
+            ]);
+
+        return response()->json(['resultados' => $resultados]);
     }
 
     public function store(Request $request)
@@ -174,5 +210,16 @@ class PrestamoHerramientaController extends Controller
     private function almacenesPara(Request $request)
     {
         return AlmacenAlmacen::query()->visiblesPara($request->user())->where('activo', true)->orderBy('nombre')->get();
+    }
+
+    private function existenciasDisponibles(Request $request)
+    {
+        return AlmacenExistencia::query()
+            ->where('cantidad', '>', 0)
+            ->whereHas('articulo', fn ($query) => $query->where('tipo', 'HERRAMIENTA')->where('activo', true))
+            ->whereHas('ubicacion', function ($query) use ($request) {
+                $query->where('activo', true)->whereHas('almacen', fn ($almacen) => $almacen->visiblesPara($request->user())->where('activo', true));
+            })
+            ->with(['articulo', 'ubicacion.almacen']);
     }
 }

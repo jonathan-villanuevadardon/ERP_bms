@@ -38,10 +38,17 @@ class DescansoController extends Controller
      */
     public function index(Request $request)
     {
-        $descansos = SeccionService::aplicar(Descanso::query(), $request->user())
-            ->orderBy('fecha_inicio', 'desc')->paginate(25);
+        $filtros = $request->validate([
+            'clave' => ['nullable', 'integer', 'min:1', 'max:9223372036854775807'],
+        ]);
 
-        return view('descansos.index', compact('descansos'));
+        $descansos = SeccionService::aplicar(Descanso::query(), $request->user())
+            ->when(isset($filtros['clave']), fn ($query) => $query->where('clave', (int) $filtros['clave']))
+            ->orderBy('fecha_inicio', 'desc')
+            ->paginate(25)
+            ->withQueryString();
+
+        return view('descansos.index', compact('descansos', 'filtros'));
     }
 
     /**

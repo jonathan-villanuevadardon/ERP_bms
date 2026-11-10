@@ -134,6 +134,48 @@ class AlmacenTest extends TestCase
         $this->assertSame(10.0, $this->cantidadEn($articulo, $this->ubicacionTajo));
     }
 
+    public function test_registra_unidades_de_medida_y_las_muestra_en_la_salida(): void
+    {
+        $this->actingAs($this->usuario)->get(route('inventario.articulos.crear'))
+            ->assertOk()
+            ->assertSee('Kilogramo (kg)')
+            ->assertSee('Gramo (g)')
+            ->assertSee('Litro (L)');
+
+        $this->post(route('inventario.articulos.guardar'), [
+            'sku' => 'MAT-KG-001',
+            'nombre' => 'Material a granel',
+            'tipo' => 'MATERIAL',
+            'unidad_medida' => 'kilogramo',
+            'ubicacion_id' => $this->ubicacionPlanta->id,
+            'stock_inicial' => 10.5,
+            'costo_unitario_inicial' => 20,
+            'stock_minimo' => 1,
+            'stock_maximo' => 50,
+            'activo' => 1,
+        ])->assertRedirectToRoute('inventario.index');
+
+        $articulo = AlmacenArticulo::query()->where('sku', 'MAT-KG-001')->firstOrFail();
+        $this->get(route('inventario.movimientos.crear', ['articulo_id' => $articulo->id]))
+            ->assertOk()
+            ->assertSee('data-unidad="kilogramo"', false);
+
+        $this->post(route('inventario.movimientos.guardar'), [
+            'articulo_id' => $articulo->id,
+            'tipo' => 'SALIDA',
+            'cantidad' => 1.25,
+            'numero_empleado' => 100,
+            'ubicacion_origen_id' => $this->ubicacionPlanta->id,
+        ])->assertRedirectToRoute('inventario.movimientos');
+
+        $this->assertSame('kilogramo', $articulo->refresh()->unidad_medida);
+        $this->assertSame(9.25, (float) $articulo->stock_actual);
+        $this->get(route('inventario.movimientos'))
+            ->assertOk()
+            ->assertSee('1.250')
+            ->assertSee('kilogramo');
+    }
+
     public function test_transferencia_mueve_stock_sin_cambiar_total_ni_costo(): void
     {
         $articulo = $this->crearArticulo('MAT-TRANS', 'MATERIAL', 10, 5);
@@ -210,6 +252,39 @@ class AlmacenTest extends TestCase
         $this->assertDatabaseHas('almacen_movimientos', [
             'tipo' => 'DEVOLUCION', 'ubicacion_destino_id' => $this->ubicacionPlanta->id,
         ]);
+    }
+
+    public function test_busca_herramientas_disponibles_por_codigo_nombre_o_serie(): void
+    {
+        $taladro = $this->crearArticulo('HER-TAL-001', 'HERRAMIENTA', 2, 50);
+        $taladro->update(['nombre' => 'Taladro industrial', 'numero_serie' => 'SERIE-7788']);
+        $this->crearArticulo('HER-LLA-002', 'HERRAMIENTA', 1, 25)
+            ->update(['nombre' => 'Llave combinada']);
+        $this->crearArticulo('MAT-TAL-003', 'MATERIAL', 3, 10)
+            ->update(['nombre' => 'Taladro de práctica']);
+
+        $this->actingAs($this->usuario)
+            ->get(route('prestamos-herramientas.crear'))
+            ->assertOk()
+            ->assertSee('Buscar herramienta')
+            ->assertDontSee('Taladro industrial');
+
+        $this->getJson(route('prestamos-herramientas.buscar-herramientas', ['q' => 'HER-TAL']))
+            ->assertOk()
+            ->assertJsonCount(1, 'resultados')
+            ->assertJsonPath('resultados.0.nombre', 'Taladro industrial');
+
+        $this->getJson(route('prestamos-herramientas.buscar-herramientas', ['q' => 'industrial']))
+            ->assertOk()
+            ->assertJsonPath('resultados.0.sku', 'HER-TAL-001');
+
+        $this->getJson(route('prestamos-herramientas.buscar-herramientas', ['q' => '7788']))
+            ->assertOk()
+            ->assertJsonPath('resultados.0.numero_serie', 'SERIE-7788');
+
+        $this->getJson(route('prestamos-herramientas.buscar-herramientas', ['q' => 'T']))
+            ->assertOk()
+            ->assertJsonCount(0, 'resultados');
     }
 
     public function test_perfil_restringido_no_opera_almacen_ni_empleado_de_otra_seccion(): void

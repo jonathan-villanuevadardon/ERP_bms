@@ -12,9 +12,9 @@
                 <form id="movimiento-form" method="POST" action="{{ route('inventario.movimientos.guardar') }}">
                     @csrf
                     <div class="row g-3">
-                        <div class="col-12"><label for="articulo_id" class="form-label">Artículo</label><select id="articulo_id" name="articulo_id" class="form-select" required><option value="">Selecciona</option>@foreach($articulos as $articulo)<option value="{{ $articulo->id }}" @selected((string) old('articulo_id', request('articulo_id')) === (string) $articulo->id)>{{ $articulo->sku }} · {{ $articulo->nombre }} · Disponible {{ number_format((float) ($articulo->stock_visible ?? 0), 3) }} {{ $articulo->unidad_medida }}</option>@endforeach</select></div>
+                        <div class="col-12"><label for="articulo_id" class="form-label">Artículo</label><select id="articulo_id" name="articulo_id" class="form-select" required><option value="" data-unidad="">Selecciona</option>@foreach($articulos as $articulo)<option value="{{ $articulo->id }}" data-unidad="{{ $articulo->unidad_medida }}" @selected((string) old('articulo_id', request('articulo_id')) === (string) $articulo->id)>{{ $articulo->sku }} · {{ $articulo->nombre }} · Disponible {{ number_format((float) ($articulo->stock_visible ?? 0), 3) }} {{ $articulo->unidad_medida }}</option>@endforeach</select></div>
                         <div class="col-md-4"><label for="tipo" class="form-label">Tipo</label><select id="tipo" name="tipo" class="form-select" required><option value="ENTRADA" @selected(old('tipo', request('tipo')) === 'ENTRADA')>Entrada de compra</option><option value="SALIDA" @selected(old('tipo', request('tipo')) === 'SALIDA')>Salida de material</option><option value="TRANSFERENCIA" @selected(old('tipo', request('tipo')) === 'TRANSFERENCIA')>Transferencia interna</option><option value="AJUSTE_ENTRADA" @selected(old('tipo', request('tipo')) === 'AJUSTE_ENTRADA')>Ajuste de entrada</option><option value="AJUSTE_SALIDA" @selected(old('tipo', request('tipo')) === 'AJUSTE_SALIDA')>Ajuste de salida</option></select></div>
-                        <div class="col-md-4"><label for="cantidad" class="form-label">Cantidad</label><input type="number" step="0.001" min="0.001" id="cantidad" name="cantidad" class="form-control" value="{{ old('cantidad', request('cantidad')) }}" required></div>
+                        <div class="col-md-4"><label for="cantidad" class="form-label">Cantidad</label><div class="input-group"><input type="number" step="0.001" min="0.001" id="cantidad" name="cantidad" class="form-control" value="{{ old('cantidad', request('cantidad')) }}" required><span id="unidad-cantidad" class="input-group-text">unidad</span></div></div>
                         <div class="col-md-4" id="costo-group"><label for="costo_unitario" class="form-label">Costo unitario de entrada</label><div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.0001" min="0" id="costo_unitario" name="costo_unitario" class="form-control" value="{{ old('costo_unitario', request('costo_unitario')) }}"></div></div>
                         <div class="col-md-6" id="origen-group"><label for="ubicacion_origen_id" class="form-label">Origen</label><select id="ubicacion_origen_id" name="ubicacion_origen_id" class="form-select"><option value="">Selecciona origen</option>@foreach($ubicaciones->groupBy('almacen_id') as $grupo)<optgroup label="{{ $grupo->first()->almacen->codigo }} · {{ $grupo->first()->almacen->nombre }}">@foreach($grupo as $ubicacion)<option value="{{ $ubicacion->id }}" @selected((string) old('ubicacion_origen_id', request('ubicacion_origen_id')) === (string) $ubicacion->id)>{{ $ubicacion->codigo }} · {{ $ubicacion->anaquel }} / {{ $ubicacion->nivel }}</option>@endforeach</optgroup>@endforeach</select></div>
                         <div class="col-md-6" id="destino-group"><label for="ubicacion_destino_id" class="form-label">Destino</label><select id="ubicacion_destino_id" name="ubicacion_destino_id" class="form-select"><option value="">Selecciona destino</option>@foreach($ubicaciones->groupBy('almacen_id') as $grupo)<optgroup label="{{ $grupo->first()->almacen->codigo }} · {{ $grupo->first()->almacen->nombre }}">@foreach($grupo as $ubicacion)<option value="{{ $ubicacion->id }}" @selected((string) old('ubicacion_destino_id', request('ubicacion_destino_id')) === (string) $ubicacion->id)>{{ $ubicacion->codigo }} · {{ $ubicacion->anaquel }} / {{ $ubicacion->nivel }}</option>@endforeach</optgroup>@endforeach</select></div>
@@ -56,6 +56,12 @@ const origen = document.getElementById('ubicacion_origen_id');
 const destino = document.getElementById('ubicacion_destino_id');
 const costo = document.getElementById('costo_unitario');
 const numeroEmpleado = document.getElementById('numero_empleado');
+const articulo = document.getElementById('articulo_id');
+const unidadCantidad = document.getElementById('unidad-cantidad');
+
+function actualizarUnidad() {
+    unidadCantidad.textContent = articulo.selectedOptions[0]?.dataset.unidad || 'unidad';
+}
 
 function actualizarMovimiento() {
     const tipo = tipoMovimiento.value;
@@ -88,6 +94,8 @@ document.getElementById('buscar-empleado').addEventListener('submit', function (
 });
 
 tipoMovimiento.addEventListener('change', actualizarMovimiento);
+articulo.addEventListener('change', actualizarUnidad);
 actualizarMovimiento();
+actualizarUnidad();
 </script>
 @endpush

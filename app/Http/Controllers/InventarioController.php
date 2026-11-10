@@ -21,6 +21,21 @@ class InventarioController extends Controller
 
     private const TIPOS_MOVIMIENTO = ['ENTRADA', 'SALIDA', 'AJUSTE_ENTRADA', 'AJUSTE_SALIDA', 'TRANSFERENCIA'];
 
+    private const UNIDADES_MEDIDA = [
+        'pieza' => 'Pieza',
+        'juego' => 'Juego',
+        'caja' => 'Caja',
+        'paquete' => 'Paquete',
+        'rollo' => 'Rollo',
+        'gramo' => 'Gramo (g)',
+        'kilogramo' => 'Kilogramo (kg)',
+        'tonelada' => 'Tonelada (t)',
+        'mililitro' => 'Mililitro (ml)',
+        'litro' => 'Litro (L)',
+        'centimetro' => 'Centímetro (cm)',
+        'metro' => 'Metro (m)',
+    ];
+
     public function index(Request $request)
     {
         $filtros = $request->validate([
@@ -85,6 +100,7 @@ class InventarioController extends Controller
             'articulo' => null,
             'ubicaciones' => $this->ubicacionesPara($request),
             'existencias' => collect(),
+            'unidadesMedida' => self::UNIDADES_MEDIDA,
         ]);
     }
 
@@ -152,6 +168,7 @@ class InventarioController extends Controller
             'existencias' => $articulo->existencias()
                 ->whereHas('ubicacion.almacen', fn ($query) => $query->visiblesPara($request->user()))
                 ->with('ubicacion.almacen')->orderBy('ubicacion_id')->get(),
+            'unidadesMedida' => self::UNIDADES_MEDIDA,
         ]);
     }
 
@@ -334,12 +351,17 @@ class InventarioController extends Controller
 
     private function validarArticulo(Request $request, ?AlmacenArticulo $articulo = null): array
     {
+        $unidadesPermitidas = array_keys(self::UNIDADES_MEDIDA);
+        if ($articulo && ! in_array($articulo->unidad_medida, $unidadesPermitidas, true)) {
+            $unidadesPermitidas[] = $articulo->unidad_medida;
+        }
+
         $reglas = [
             'sku' => ['required', 'string', 'max:80', Rule::unique('almacen_articulos', 'sku')->ignore($articulo?->id)],
             'nombre' => ['required', 'string', 'max:150'],
             'descripcion' => ['nullable', 'string', 'max:500'],
             'tipo' => ['required', Rule::in(self::TIPOS_ARTICULO)],
-            'unidad_medida' => ['required', 'string', 'max:30'],
+            'unidad_medida' => ['required', 'string', 'max:30', Rule::in($unidadesPermitidas)],
             'numero_serie' => ['nullable', 'string', 'max:100'],
             'activo' => ['nullable', 'boolean'],
         ];

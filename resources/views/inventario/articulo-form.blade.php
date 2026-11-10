@@ -14,7 +14,8 @@
                 <div class="col-md-4"><label for="sku" class="form-label">SKU / código</label><input id="sku" name="sku" class="form-control" maxlength="80" value="{{ old('sku', $articulo?->sku) }}" required></div>
                 <div class="col-md-8"><label for="nombre" class="form-label">Nombre</label><input id="nombre" name="nombre" class="form-control" maxlength="150" value="{{ old('nombre', $articulo?->nombre) }}" required></div>
                 <div class="col-md-4"><label for="tipo" class="form-label">Tipo</label><select id="tipo" name="tipo" class="form-select" required><option value="MATERIAL" @selected(old('tipo', $articulo?->tipo) === 'MATERIAL')>Material / insumo</option><option value="HERRAMIENTA" @selected(old('tipo', $articulo?->tipo) === 'HERRAMIENTA')>Herramienta</option></select></div>
-                <div class="col-md-4"><label for="unidad_medida" class="form-label">Unidad</label><input id="unidad_medida" name="unidad_medida" class="form-control" maxlength="30" value="{{ old('unidad_medida', $articulo?->unidad_medida ?? 'pieza') }}" required></div>
+                @php($unidadActual = old('unidad_medida', $articulo?->unidad_medida ?? 'pieza'))
+                <div class="col-md-4"><label for="unidad_medida" class="form-label">Unidad de medida</label><select id="unidad_medida" name="unidad_medida" class="form-select" required>@if(!array_key_exists($unidadActual, $unidadesMedida))<option value="{{ $unidadActual }}" selected>{{ ucfirst($unidadActual) }} (actual)</option>@endif @foreach($unidadesMedida as $valor => $etiqueta)<option value="{{ $valor }}" @selected($unidadActual === $valor)>{{ $etiqueta }}</option>@endforeach</select><div class="form-text">La existencia, entradas y salidas se registrarán en esta unidad. No se realizan conversiones automáticas.</div></div>
                 <div class="col-md-4"><label for="numero_serie" class="form-label">Número de serie</label><input id="numero_serie" name="numero_serie" class="form-control" maxlength="100" value="{{ old('numero_serie', $articulo?->numero_serie) }}"></div>
 
                 @if(!$articulo)
@@ -46,7 +47,7 @@
                 <tr>
                     <td><strong>{{ $existencia->ubicacion->almacen->nombre }}</strong><br><span class="small text-muted">{{ $existencia->ubicacion->almacen->seccion ?: 'Sin sección' }}</span></td>
                     <td>{{ $existencia->ubicacion->codigo }}<br><span class="small text-muted">{{ $existencia->ubicacion->anaquel }} · {{ $existencia->ubicacion->nivel }}</span></td>
-                    <td class="text-end fw-semibold">{{ number_format((float) $existencia->cantidad, 3) }}</td>
+                    <td class="text-end fw-semibold">{{ number_format((float) $existencia->cantidad, 3) }} <span class="small text-muted">{{ $articulo->unidad_medida }}</span></td>
                     <td><form method="POST" action="{{ route('inventario.existencias.reglas', $existencia) }}" class="d-flex gap-2">@csrf @method('PUT')<div><label class="visually-hidden" for="min-{{ $existencia->id }}">Mínimo</label><input type="number" step="0.001" min="0" id="min-{{ $existencia->id }}" name="stock_minimo" class="form-control form-control-sm" value="{{ $existencia->stock_minimo }}" placeholder="Mínimo" required></div><div><label class="visually-hidden" for="max-{{ $existencia->id }}">Máximo</label><input type="number" step="0.001" min="0" id="max-{{ $existencia->id }}" name="stock_maximo" class="form-control form-control-sm" value="{{ $existencia->stock_maximo }}" placeholder="Máximo"></div><button type="submit" class="btn btn-sm btn-outline-dark">Guardar</button></form></td>
                 </tr>
                 @empty

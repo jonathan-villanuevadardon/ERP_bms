@@ -190,6 +190,7 @@ Route::middleware(['auth', VerificarPerfil::class])->group(function () {
     Route::prefix('prestamos-herramientas')->name('prestamos-herramientas.')->middleware('permiso:puede_gestionar_prestamos_herramientas')->group(function () {
         Route::get('/', [PrestamoHerramientaController::class, 'index'])->name('index');
         Route::get('crear', [PrestamoHerramientaController::class, 'create'])->name('crear');
+        Route::get('buscar-herramientas', [PrestamoHerramientaController::class, 'buscarHerramientas'])->name('buscar-herramientas');
         Route::post('/', [PrestamoHerramientaController::class, 'store'])->name('guardar');
         Route::post('{prestamo}/devolver', [PrestamoHerramientaController::class, 'devolver'])->name('devolver');
         Route::get('historial', [PrestamoHerramientaController::class, 'historial'])->name('historial');
