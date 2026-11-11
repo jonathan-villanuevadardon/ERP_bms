@@ -20,8 +20,9 @@ class PrestamoHerramientaController extends Controller
     {
         $filtros = $request->validate([
             'trabajador' => ['nullable', 'string', 'max:150'],
-            'estado' => ['nullable', Rule::in(['ACTIVO', 'PARCIAL', 'DEVUELTO'])],
+            'estado' => ['nullable', Rule::in(['ACTIVO', 'PARCIAL', 'DEVUELTO', 'CERRADO'])],
             'tipo' => ['nullable', Rule::in(['PRESTAMO', 'RESGUARDO'])],
+            'condicion' => ['nullable', Rule::in(['REUTILIZABLE', 'DANADA', 'EXTRAVIADA'])],
             'q' => ['nullable', 'string', 'max:100'],
             'almacen' => ['nullable', 'integer', 'exists:almacen_almacenes,id'],
         ]);
@@ -36,6 +37,13 @@ class PrestamoHerramientaController extends Controller
             })
             ->when($filtros['estado'] ?? null, fn ($query, $estado) => $query->where('estado', $estado))
             ->when($filtros['tipo'] ?? null, fn ($query, $tipo) => $query->where('tipo_asignacion', $tipo))
+            ->when($filtros['condicion'] ?? null, function ($query, $condicion) {
+                $query->whereHas('movimientos', function ($movimiento) use ($condicion) {
+                    $condicion === 'REUTILIZABLE'
+                        ? $movimiento->whereIn('condicion', ['REUTILIZABLE', 'BUENA'])
+                        : $movimiento->where('condicion', $condicion);
+                });
+            })
             ->when($filtros['almacen'] ?? null, fn ($query, $almacen) => $query->whereHas('ubicacion', fn ($ubicacion) => $ubicacion->where('almacen_id', $almacen)))
             ->when($filtros['q'] ?? null, function ($query, $termino) {
                 $query->where(function ($busqueda) use ($termino) {
@@ -152,14 +160,17 @@ class PrestamoHerramientaController extends Controller
         $registro = $this->prestamoVisible($request, $prestamo);
         $data = $request->validate([
             'cantidad' => ['required', 'numeric', 'gt:0'],
+            'condicion' => ['nullable', Rule::in(['REUTILIZABLE', 'DANADA', 'EXTRAVIADA'])],
+            'nota' => ['nullable', 'string', 'max:500'],
             'observaciones' => ['nullable', 'string', 'max:500'],
         ]);
 
         PrestamoHerramientaService::recibir(
             $registro->id,
             (float) $data['cantidad'],
+            $data['condicion'] ?? 'REUTILIZABLE',
             $request->user(),
-            $data['observaciones'] ?? null,
+            $data['nota'] ?? $data['observaciones'] ?? null,
         );
 
         return redirect()->route('prestamos-herramientas.index')->with('success', 'Recepción registrada correctamente.');
@@ -169,7 +180,8 @@ class PrestamoHerramientaController extends Controller
     {
         $filtros = $request->validate([
             'trabajador' => ['nullable', 'string', 'max:150'],
-            'tipo' => ['nullable', Rule::in(['SALIDA', 'DEVOLUCION'])],
+            'tipo' => ['nullable', Rule::in(['SALIDA', 'DEVOLUCION', 'BAJA'])],
+            'condicion' => ['nullable', Rule::in(['REUTILIZABLE', 'DANADA', 'EXTRAVIADA'])],
             'q' => ['nullable', 'string', 'max:100'],
             'almacen' => ['nullable', 'integer', 'exists:almacen_almacenes,id'],
         ]);
@@ -183,6 +195,11 @@ class PrestamoHerramientaController extends Controller
                 });
             })
             ->when($filtros['tipo'] ?? null, fn ($query, $tipo) => $query->where('tipo', $tipo))
+            ->when($filtros['condicion'] ?? null, function ($query, $condicion) {
+                $condicion === 'REUTILIZABLE'
+                    ? $query->whereIn('condicion', ['REUTILIZABLE', 'BUENA'])
+                    : $query->where('condicion', $condicion);
+            })
             ->when($filtros['almacen'] ?? null, fn ($query, $almacen) => $query->whereHas('prestamo.ubicacion', fn ($ubicacion) => $ubicacion->where('almacen_id', $almacen)))
             ->when($filtros['q'] ?? null, function ($query, $termino) {
                 $query->whereHas('prestamo', function ($prestamo) use ($termino) {

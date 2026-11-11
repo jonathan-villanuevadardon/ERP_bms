@@ -176,6 +176,7 @@ Route::middleware(['auth', VerificarPerfil::class])->group(function () {
         Route::post('articulos', [InventarioController::class, 'store'])->name('articulos.guardar');
         Route::get('articulos/{articulo}/editar', [InventarioController::class, 'edit'])->name('articulos.editar');
         Route::put('articulos/{articulo}', [InventarioController::class, 'update'])->name('articulos.actualizar');
+        Route::post('articulos/{articulo}/costo', [InventarioController::class, 'updateCosto'])->name('articulos.costo.actualizar');
         Route::get('almacenes', [AlmacenConfiguracionController::class, 'index'])->name('almacenes');
         Route::post('almacenes', [AlmacenConfiguracionController::class, 'store'])->name('almacenes.guardar');
         Route::put('almacenes/{almacen}', [AlmacenConfiguracionController::class, 'update'])->name('almacenes.actualizar');
@@ -184,6 +185,7 @@ Route::middleware(['auth', VerificarPerfil::class])->group(function () {
         Route::put('existencias/{existencia}/reglas', [AlmacenConfiguracionController::class, 'updateReglas'])->name('existencias.reglas');
         Route::get('movimientos', [InventarioController::class, 'movimientos'])->name('movimientos');
         Route::get('movimientos/crear', [InventarioController::class, 'crearMovimiento'])->name('movimientos.crear');
+        Route::get('movimientos/buscar-articulos', [InventarioController::class, 'buscarArticulos'])->name('movimientos.buscar-articulos');
         Route::post('movimientos', [InventarioController::class, 'guardarMovimiento'])->name('movimientos.guardar');
         Route::redirect('ubicaciones', '/inventario/almacenes')->name('ubicaciones');
     });

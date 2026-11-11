@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AlmacenAjusteCosto;
 use App\Models\AlmacenArticulo;
 use App\Models\AlmacenExistencia;
 use App\Models\AlmacenMovimiento;
@@ -176,6 +177,37 @@ class AlmacenService
             'observaciones' => $datos['observaciones'] ?? null,
             'fecha_movimiento' => now(),
         ]);
+    }
+
+    public static function corregirCosto(AlmacenArticulo $articulo, float $costoNuevo, string $motivo, ?int $usuarioId): AlmacenAjusteCosto
+    {
+        return DB::transaction(function () use ($articulo, $costoNuevo, $motivo, $usuarioId) {
+            $articuloBloqueado = AlmacenArticulo::query()->lockForUpdate()->findOrFail($articulo->id);
+            $costoAnterior = round((float) $articuloBloqueado->costo_promedio, 4);
+            $costoNuevo = round($costoNuevo, 4);
+
+            if ($costoAnterior === $costoNuevo) {
+                throw ValidationException::withMessages([
+                    'costo_nuevo' => 'El costo nuevo debe ser diferente del costo vigente.',
+                ]);
+            }
+
+            $existenciaActual = round((float) AlmacenExistencia::query()
+                ->where('articulo_id', $articuloBloqueado->id)
+                ->sum('cantidad'), 3);
+
+            $articuloBloqueado->forceFill(['costo_promedio' => $costoNuevo])->save();
+
+            return AlmacenAjusteCosto::query()->create([
+                'articulo_id' => $articuloBloqueado->id,
+                'costo_anterior' => $costoAnterior,
+                'costo_nuevo' => $costoNuevo,
+                'existencia_actual' => $existenciaActual,
+                'motivo' => trim($motivo),
+                'usuario_id' => $usuarioId,
+                'fecha_ajuste' => now(),
+            ]);
+        });
     }
 
     public static function autorizarUbicacion(Usuario $usuario, int $ubicacionId): AlmacenUbicacion

@@ -12,6 +12,7 @@ use App\Services\EmpleadoService;
 use App\Services\SeccionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -161,6 +162,7 @@ class InventarioController extends Controller
     public function edit(Request $request, AlmacenArticulo $articulo)
     {
         $this->autorizarEdicionArticulo($request, $articulo);
+        $ajustesCostoDisponible = Schema::hasTable('almacen_ajustes_costo');
 
         return view('inventario.articulo-form', [
             'articulo' => $articulo,
@@ -168,6 +170,10 @@ class InventarioController extends Controller
             'existencias' => $articulo->existencias()
                 ->whereHas('ubicacion.almacen', fn ($query) => $query->visiblesPara($request->user()))
                 ->with('ubicacion.almacen')->orderBy('ubicacion_id')->get(),
+            'ajustesCostoDisponible' => $ajustesCostoDisponible,
+            'ajustesCosto' => $ajustesCostoDisponible
+                ? $articulo->ajustesCosto()->with('usuario')->orderByDesc('fecha_ajuste')->get()
+                : collect(),
             'unidadesMedida' => self::UNIDADES_MEDIDA,
         ]);
     }
@@ -190,6 +196,34 @@ class InventarioController extends Controller
         $articulo->update($data);
 
         return redirect()->route('inventario.index')->with('success', 'Artículo actualizado correctamente.');
+    }
+
+    public function updateCosto(Request $request, AlmacenArticulo $articulo)
+    {
+        $this->autorizarEdicionArticulo($request, $articulo);
+        if (! Schema::hasTable('almacen_ajustes_costo')) {
+            throw ValidationException::withMessages([
+                'costo_nuevo' => 'La corrección de costos aún no está habilitada en la base de datos.',
+            ]);
+        }
+
+        $data = $request->validate([
+            'costo_nuevo' => ['required', 'numeric', 'gt:0', 'max:99999999999999.9999'],
+            'motivo' => ['required', 'string', 'max:500'],
+        ]);
+
+        AlmacenService::corregirCosto(
+            $articulo,
+            (float) $data['costo_nuevo'],
+            $data['motivo'],
+            $request->user()->id,
+        );
+
+        return redirect()->to(route('inventario.articulos.editar', [
+            'articulo' => $articulo,
+            'mostrar_costo' => 1,
+        ]).'#ajuste-costo')
+            ->with('success', 'Costo corregido correctamente. Las existencias y los movimientos anteriores no fueron modificados.');
     }
 
     public function movimientos(Request $request)
@@ -250,15 +284,12 @@ class InventarioController extends Controller
 
     public function crearMovimiento(Request $request)
     {
-        $usuario = $request->user();
+        $articuloId = (int) $request->old('articulo_id', $request->input('articulo_id'));
 
         return view('inventario.movimiento-form', [
-            'articulos' => AlmacenArticulo::query()
-                ->where('activo', true)
-                ->withSum(['existencias as stock_visible' => function ($query) use ($usuario) {
-                    $query->whereHas('ubicacion.almacen', fn ($almacen) => $almacen->visiblesPara($usuario));
-                }], 'cantidad')
-                ->orderBy('nombre')->get(),
+            'articuloSeleccionado' => $articuloId
+                ? $this->articulosParaMovimiento($request)->find($articuloId)
+                : null,
             'ubicaciones' => $this->ubicacionesPara($request),
             'empleados' => EmpleadoService::buscarParaSelector(
                 $request->input('termino'),
@@ -267,6 +298,38 @@ class InventarioController extends Controller
             ),
             'empleadoSeleccionado' => $request->integer('numero_empleado') ?: null,
         ]);
+    }
+
+    public function buscarArticulos(Request $request)
+    {
+        $data = $request->validate([
+            'q' => ['required', 'string', 'max:100'],
+        ]);
+        $termino = trim($data['q']);
+        if (mb_strlen($termino) < 2) {
+            return response()->json(['resultados' => []]);
+        }
+
+        $resultados = $this->articulosParaMovimiento($request)
+            ->where(function ($query) use ($termino) {
+                $query->where('sku', 'like', "%{$termino}%")
+                    ->orWhere('nombre', 'like', "%{$termino}%")
+                    ->orWhere('numero_serie', 'like', "%{$termino}%");
+            })
+            ->orderBy('sku')
+            ->limit(20)
+            ->get()
+            ->map(fn ($articulo) => [
+                'id' => $articulo->id,
+                'sku' => $articulo->sku,
+                'nombre' => $articulo->nombre,
+                'numero_serie' => $articulo->numero_serie,
+                'tipo' => $articulo->tipo,
+                'disponible' => (float) ($articulo->stock_visible ?? 0),
+                'unidad' => $articulo->unidad_medida,
+            ]);
+
+        return response()->json(['resultados' => $resultados]);
     }
 
     public function guardarMovimiento(Request $request)
@@ -387,6 +450,26 @@ class InventarioController extends Controller
             ->where('activo', true)
             ->whereHas('almacen', fn ($query) => $query->visiblesPara($request->user())->where('activo', true))
             ->with('almacen')->orderBy('almacen_id')->orderBy('codigo')->get();
+    }
+
+    private function articulosParaMovimiento(Request $request)
+    {
+        $usuario = $request->user();
+
+        return AlmacenArticulo::query()
+            ->where('activo', true)
+            ->whereHas('existencias', function ($query) use ($usuario) {
+                $query->whereHas('ubicacion', function ($ubicacion) use ($usuario) {
+                    $ubicacion->where('activo', true)
+                        ->whereHas('almacen', fn ($almacen) => $almacen->visiblesPara($usuario)->where('activo', true));
+                });
+            })
+            ->withSum(['existencias as stock_visible' => function ($query) use ($usuario) {
+                $query->whereHas('ubicacion', function ($ubicacion) use ($usuario) {
+                    $ubicacion->where('activo', true)
+                        ->whereHas('almacen', fn ($almacen) => $almacen->visiblesPara($usuario)->where('activo', true));
+                });
+            }], 'cantidad');
     }
 
     private function autorizarEdicionArticulo(Request $request, AlmacenArticulo $articulo): void

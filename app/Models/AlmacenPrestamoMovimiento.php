@@ -13,7 +13,7 @@ class AlmacenPrestamoMovimiento extends Model
     protected $table = 'almacen_prestamo_movimientos';
 
     protected $fillable = [
-        'prestamo_id', 'tipo', 'cantidad', 'usuario_id', 'observaciones',
+        'prestamo_id', 'tipo', 'condicion', 'cantidad', 'usuario_id', 'observaciones',
         'fecha_movimiento',
     ];
 

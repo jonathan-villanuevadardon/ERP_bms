@@ -7,6 +7,7 @@
 <div class="card shadow-sm mx-auto" style="max-width: 1080px">
     <div class="card-header bg-dark text-white"><h1 class="h5 mb-0">{{ $articulo ? 'Catálogo y existencias del artículo' : 'Registrar artículo y existencia inicial' }}</h1></div>
     <div class="card-body">
+        @php($mostrarAjusteCosto = $articulo && ($ajustesCostoDisponible ?? false) && (request()->boolean('mostrar_costo') || $errors->has('costo_nuevo') || $errors->has('motivo')))
         <form method="POST" action="{{ $articulo ? route('inventario.articulos.actualizar', $articulo) : route('inventario.articulos.guardar') }}">
             @csrf
             @if($articulo) @method('PUT') @endif
@@ -31,12 +32,49 @@
                 @endif
 
                 <div class="col-12"><label for="descripcion" class="form-label">Descripción</label><textarea id="descripcion" name="descripcion" class="form-control" rows="3" maxlength="500">{{ old('descripcion', $articulo?->descripcion) }}</textarea></div>
-                <div class="col-12"><input type="hidden" name="activo" value="0"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="activo" name="activo" value="1" @checked(old('activo', $articulo?->activo ?? true))><label for="activo" class="form-check-label">Artículo activo</label></div></div>
             </div>
-            <button type="submit" class="btn btn-primary mt-4"><i class="bi bi-check-lg" aria-hidden="true"></i> Guardar artículo</button>
+            <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 bg-body-tertiary border rounded p-3 mt-4">
+                <div><input type="hidden" name="activo" value="0"><div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" id="activo" name="activo" value="1" @checked(old('activo', $articulo?->activo ?? true))><label for="activo" class="form-check-label fw-semibold">Artículo activo</label></div></div>
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg" aria-hidden="true"></i> Guardar artículo</button>
+                    @if($articulo && ($ajustesCostoDisponible ?? false))
+                    <button type="button" class="btn btn-warning" data-bs-toggle="collapse" data-bs-target="#ajuste-costo" aria-expanded="{{ $mostrarAjusteCosto ? 'true' : 'false' }}" aria-controls="ajuste-costo"><i class="bi bi-currency-dollar" aria-hidden="true"></i> Corregir costo</button>
+                    @endif
+                </div>
+            </div>
         </form>
 
         @if($articulo)
+        @if($ajustesCostoDisponible)
+        <section id="ajuste-costo" class="collapse {{ $mostrarAjusteCosto ? 'show' : '' }} mt-3">
+            <div class="border rounded p-3 bg-body-tertiary">
+                <div class="row g-3 align-items-start mt-2">
+                    <div class="col-lg-5">
+                        <h2 class="h5 mb-1">Corregir costo vigente</h2>
+                        <p class="small text-muted mb-0">Esta corrección no agrega ni retira existencias. Las salidas anteriores conservan el costo registrado en su fecha; las nuevas salidas usarán el costo vigente.</p>
+                    </div>
+                    <div class="col-lg-7">
+                        <form method="POST" action="{{ route('inventario.articulos.costo.actualizar', $articulo) }}" class="row g-2">
+                            @csrf
+                            <div class="col-sm-5"><label for="costo_nuevo" class="form-label">Nuevo costo unitario</label><div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.0001" min="0.0001" id="costo_nuevo" name="costo_nuevo" class="form-control" value="{{ old('costo_nuevo', $articulo->costo_promedio) }}" required></div><div class="form-text">Costo actual: ${{ number_format((float) $articulo->costo_promedio, 4) }}</div></div>
+                            <div class="col-sm-7"><label for="motivo" class="form-label">Motivo de la corrección</label><textarea id="motivo" name="motivo" class="form-control" maxlength="500" rows="2" required>{{ old('motivo') }}</textarea></div>
+                            <div class="col-12 text-end"><button type="submit" class="btn btn-warning" onclick="return confirm('¿Confirmas la corrección del costo? No se modificarán las existencias ni las salidas anteriores.')"><i class="bi bi-check-lg" aria-hidden="true"></i> Guardar nuevo costo</button></div>
+                        </form>
+                    </div>
+                </div>
+
+                @if($ajustesCosto->isNotEmpty())
+                <div class="table-responsive mt-4">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead><tr><th>Fecha</th><th class="text-end">Costo anterior</th><th class="text-end">Costo nuevo</th><th class="text-end">Existencia</th><th>Usuario</th><th>Motivo</th></tr></thead>
+                        <tbody>@foreach($ajustesCosto as $ajuste)<tr><td class="text-nowrap">{{ $ajuste->fecha_ajuste?->format('d/m/Y H:i') }}</td><td class="text-end">${{ number_format((float) $ajuste->costo_anterior, 4) }}</td><td class="text-end fw-semibold">${{ number_format((float) $ajuste->costo_nuevo, 4) }}</td><td class="text-end">{{ number_format((float) $ajuste->existencia_actual, 3) }} {{ $articulo->unidad_medida }}</td><td>{{ $ajuste->usuario?->name ?? 'Usuario no disponible' }}</td><td>{{ $ajuste->motivo }}</td></tr>@endforeach</tbody>
+                    </table>
+                </div>
+                @endif
+            </div>
+        </section>
+        @endif
+
         <hr class="my-4">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3"><div><h2 class="h5 mb-1">Existencias por ubicación</h2><p class="small text-muted mb-0">Los mínimos y máximos se administran por ubicación. Usa un movimiento para agregar stock o transferirlo.</p></div><a href="{{ route('inventario.movimientos.crear') }}" class="btn btn-outline-primary">Registrar movimiento</a></div>
         <div class="table-responsive">

@@ -28,6 +28,8 @@ class AlmacenMigrationsTest extends TestCase
         $inventario = require database_path('migrations/2024_01_01_000019_create_almacen_inventario_tables.php');
         $prestamos = require database_path('migrations/2024_01_01_000020_create_almacen_prestamos_tables.php');
         $multiAlmacen = require database_path('migrations/2024_01_01_000021_add_multi_warehouse_inventory.php');
+        $ajustesCosto = require database_path('migrations/2024_01_01_000022_create_almacen_ajustes_costo_table.php');
+        $bajasPrestamos = require database_path('migrations/2024_01_01_000023_add_bajas_to_almacen_prestamos.php');
 
         $permisos->up();
         $inventario->up();
@@ -53,6 +55,8 @@ class AlmacenMigrationsTest extends TestCase
         ]);
 
         $multiAlmacen->up();
+        $ajustesCosto->up();
+        $bajasPrestamos->up();
 
         $this->assertTrue(Schema::hasColumns('perfiles', [
             'puede_gestionar_inventario',
@@ -69,6 +73,9 @@ class AlmacenMigrationsTest extends TestCase
         $this->assertTrue(Schema::hasColumn('almacen_ubicaciones', 'almacen_id'));
         $this->assertTrue(Schema::hasColumns('almacen_movimientos', ['ubicacion_origen_id', 'ubicacion_destino_id']));
         $this->assertTrue(Schema::hasColumn('almacen_prestamos', 'ubicacion_id'));
+        $this->assertTrue(Schema::hasTable('almacen_ajustes_costo'));
+        $this->assertTrue(Schema::hasColumn('almacen_prestamos', 'cantidad_baja'));
+        $this->assertTrue(Schema::hasColumn('almacen_prestamo_movimientos', 'condicion'));
         $this->assertDatabaseHas('almacen_almacenes', ['codigo' => 'LEGACY']);
         $ubicacionLegada = DB::table('almacen_ubicaciones')->where('codigo', 'LEGACY-SIN-UBICACION')->first();
         $this->assertNotNull($ubicacionLegada);
@@ -82,6 +89,8 @@ class AlmacenMigrationsTest extends TestCase
         DB::table('almacen_existencias')->where('articulo_id', $articulo)->update(['cantidad' => 7]);
         DB::table('almacen_articulos')->where('id', $articulo)->update(['stock_actual' => 999]);
 
+        $bajasPrestamos->down();
+        $ajustesCosto->down();
         $multiAlmacen->down();
         $this->assertDatabaseHas('almacen_articulos', ['id' => $articulo, 'stock_actual' => 7]);
         $prestamos->down();

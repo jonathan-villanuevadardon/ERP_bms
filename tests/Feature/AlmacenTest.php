@@ -76,7 +76,7 @@ class AlmacenTest extends TestCase
     protected function tearDown(): void
     {
         foreach ([
-            'almacen_prestamo_movimientos', 'almacen_prestamos', 'almacen_movimientos',
+            'almacen_ajustes_costo', 'almacen_prestamo_movimientos', 'almacen_prestamos', 'almacen_movimientos',
             'almacen_existencias', 'almacen_articulos', 'almacen_ubicaciones', 'almacen_almacenes',
             'HCBMS_ALL_OP', 'usuarios', 'perfiles',
         ] as $tabla) {
@@ -159,6 +159,116 @@ class AlmacenTest extends TestCase
         $this->assertSame(10.0, $this->cantidadEn($articulo, $this->ubicacionTajo));
     }
 
+    public function test_corrige_costo_sin_modificar_stock_y_conserva_costos_historicos_de_salida(): void
+    {
+        $articulo = $this->crearArticulo('MAT-COSTO', 'MATERIAL', 10, 5);
+
+        $this->actingAs($this->usuario)->get(route('inventario.index'))
+            ->assertOk()
+            ->assertDontSee('Corregir costo');
+        $this->get(route('inventario.articulos.editar', $articulo))
+            ->assertOk()
+            ->assertSee('Corregir costo');
+
+        $this->post(route('inventario.movimientos.guardar'), [
+            'articulo_id' => $articulo->id,
+            'tipo' => 'SALIDA',
+            'cantidad' => 2,
+            'numero_empleado' => 100,
+            'ubicacion_origen_id' => $this->ubicacionPlanta->id,
+            'referencia' => 'SALIDA-ANTES-COSTO',
+        ])->assertRedirectToRoute('inventario.movimientos');
+
+        $this->post(route('inventario.articulos.costo.actualizar', $articulo), [
+            'costo_nuevo' => 8,
+            'motivo' => 'Corrección de precio capturado incorrectamente.',
+        ])->assertRedirect(route('inventario.articulos.editar', [
+            'articulo' => $articulo,
+            'mostrar_costo' => 1,
+        ]).'#ajuste-costo');
+
+        $this->assertSame(8.0, (float) $articulo->refresh()->costo_promedio);
+        $this->assertSame(8.0, $this->cantidadEn($articulo, $this->ubicacionPlanta));
+        $this->assertDatabaseHas('almacen_ajustes_costo', [
+            'articulo_id' => $articulo->id,
+            'costo_anterior' => 5,
+            'costo_nuevo' => 8,
+            'existencia_actual' => 8,
+            'motivo' => 'Corrección de precio capturado incorrectamente.',
+            'usuario_id' => $this->usuario->id,
+        ]);
+
+        $this->get(route('inventario.articulos.editar', $articulo))
+            ->assertOk()
+            ->assertSee('Corrección de precio capturado incorrectamente.')
+            ->assertSee('$5.0000')
+            ->assertSee('$8.0000');
+
+        $this->post(route('inventario.movimientos.guardar'), [
+            'articulo_id' => $articulo->id,
+            'tipo' => 'SALIDA',
+            'cantidad' => 1,
+            'numero_empleado' => 100,
+            'ubicacion_origen_id' => $this->ubicacionPlanta->id,
+            'referencia' => 'SALIDA-DESPUES-COSTO',
+        ])->assertRedirectToRoute('inventario.movimientos');
+
+        $salidas = $articulo->movimientos()->where('tipo', 'SALIDA')->orderBy('id')->get();
+        $this->assertCount(2, $salidas);
+        $this->assertSame(5.0, (float) $salidas[0]->costo_unitario);
+        $this->assertSame(10.0, (float) $salidas[0]->costo_total);
+        $this->assertSame(8.0, (float) $salidas[1]->costo_unitario);
+        $this->assertSame(8.0, (float) $salidas[1]->costo_total);
+        $this->assertSame(7.0, $this->cantidadEn($articulo, $this->ubicacionPlanta));
+
+        $this->get(route('inventario.movimientos'))
+            ->assertOk()
+            ->assertSee('SALIDA-ANTES-COSTO')
+            ->assertSee('SALIDA-DESPUES-COSTO')
+            ->assertSee('$5.0000')
+            ->assertSee('$8.0000');
+    }
+
+    public function test_busca_articulos_para_registrar_movimientos_por_sku_nombre_o_serie(): void
+    {
+        $material = $this->crearArticulo('MAT-BUSCA-01', 'MATERIAL', 3, 5);
+        $material->update(['nombre' => 'Grasa industrial']);
+        $herramienta = $this->crearArticulo('HER-BUSCA-01', 'HERRAMIENTA', 1, 20);
+        $herramienta->update(['numero_serie' => 'SERIE-MOV-7788']);
+
+        $this->actingAs($this->usuario)
+            ->getJson(route('inventario.movimientos.buscar-articulos', ['q' => 'GRASA']))
+            ->assertOk()
+            ->assertJsonPath('resultados.0.id', $material->id)
+            ->assertJsonPath('resultados.0.disponible', 3)
+            ->assertJsonPath('resultados.0.unidad', 'pieza');
+
+        $this->getJson(route('inventario.movimientos.buscar-articulos', ['q' => '7788']))
+            ->assertOk()
+            ->assertJsonPath('resultados.0.id', $herramienta->id)
+            ->assertJsonPath('resultados.0.numero_serie', 'SERIE-MOV-7788');
+
+        $this->getJson(route('inventario.movimientos.buscar-articulos', ['q' => 'M']))
+            ->assertOk()
+            ->assertJsonCount(0, 'resultados');
+
+        $this->get(route('inventario.movimientos.crear', ['articulo_id' => $material->id]))
+            ->assertOk()
+            ->assertSee('Grasa industrial')
+            ->assertSee('value="'.$material->id.'"', false);
+    }
+
+    public function test_detalle_no_falla_si_la_migracion_de_costos_esta_pendiente(): void
+    {
+        $articulo = $this->crearArticulo('MAT-SIN-TABLA-COSTO', 'MATERIAL', 1, 5);
+        Schema::drop('almacen_ajustes_costo');
+
+        $this->actingAs($this->usuario)
+            ->get(route('inventario.articulos.editar', $articulo))
+            ->assertOk()
+            ->assertDontSee('Corregir costo');
+    }
+
     public function test_registra_unidades_de_medida_y_las_muestra_en_la_salida(): void
     {
         $this->actingAs($this->usuario)->get(route('inventario.articulos.crear'))
@@ -183,7 +293,9 @@ class AlmacenTest extends TestCase
         $articulo = AlmacenArticulo::query()->where('sku', 'MAT-KG-001')->firstOrFail();
         $this->get(route('inventario.movimientos.crear', ['articulo_id' => $articulo->id]))
             ->assertOk()
-            ->assertSee('data-unidad="kilogramo"', false);
+            ->assertSee('Material a granel')
+            ->assertSee('kilogramo')
+            ->assertSee('value="'.$articulo->id.'"', false);
 
         $this->post(route('inventario.movimientos.guardar'), [
             'articulo_id' => $articulo->id,
@@ -277,6 +389,87 @@ class AlmacenTest extends TestCase
         $this->assertDatabaseHas('almacen_movimientos', [
             'tipo' => 'DEVOLUCION', 'ubicacion_destino_id' => $this->ubicacionPlanta->id,
         ]);
+        $this->assertDatabaseHas('almacen_prestamo_movimientos', [
+            'prestamo_id' => $prestamo->id, 'tipo' => 'DEVOLUCION', 'condicion' => 'REUTILIZABLE',
+        ]);
+        $this->get(route('prestamos-herramientas.historial', ['condicion' => 'REUTILIZABLE']))
+            ->assertOk()
+            ->assertSee($prestamo->folio);
+    }
+
+    public function test_herramienta_danada_o_extraviada_se_cierra_sin_regresar_al_stock(): void
+    {
+        $herramienta = $this->crearArticulo('HER-BAJA', 'HERRAMIENTA', 3, 50);
+        $existencia = $this->existenciaEn($herramienta, $this->ubicacionPlanta);
+
+        $this->actingAs($this->usuario)->post(route('prestamos-herramientas.guardar'), [
+            'existencia_id' => $existencia->id, 'numero_empleado' => 100,
+            'tipo_asignacion' => 'PRESTAMO', 'cantidad' => 2,
+            'fecha_compromiso' => now()->addDay()->format('Y-m-d'),
+        ])->assertRedirectToRoute('prestamos-herramientas.index');
+
+        $prestamo = AlmacenPrestamo::query()->firstOrFail();
+        $this->assertSame(1.0, $this->cantidadEn($herramienta, $this->ubicacionPlanta));
+
+        $this->get(route('prestamos-herramientas.index'))
+            ->assertOk()
+            ->assertSee('Procesar recepción')
+            ->assertSee('Reutilizable')
+            ->assertSee('Dañada')
+            ->assertSee('Extraviada')
+            ->assertSee('Información adicional opcional')
+            ->assertDontSee('Dañada · baja')
+            ->assertDontSee('Extraviada · baja')
+            ->assertDontSee('Condición / nota');
+
+        $this->post(route('prestamos-herramientas.devolver', $prestamo), [
+            'cantidad' => 0.5,
+            'condicion' => 'DANADA',
+            'nota' => 'Carcasa rota durante el uso.',
+        ])->assertRedirectToRoute('prestamos-herramientas.index');
+
+        $this->assertSame('PARCIAL', $prestamo->refresh()->estado);
+        $this->assertSame(0.5, (float) $prestamo->cantidad_baja);
+        $this->assertSame(0.0, (float) $prestamo->cantidad_devuelta);
+        $this->assertSame(1.0, $this->cantidadEn($herramienta, $this->ubicacionPlanta));
+
+        $this->post(route('prestamos-herramientas.devolver', $prestamo), [
+            'cantidad' => 1.5,
+            'condicion' => 'EXTRAVIADA',
+            'nota' => 'No localizada después de la jornada.',
+        ])->assertRedirectToRoute('prestamos-herramientas.index');
+
+        $this->assertSame('CERRADO', $prestamo->refresh()->estado);
+        $this->assertSame(2.0, (float) $prestamo->cantidad_baja);
+        $this->assertSame(1.0, $this->cantidadEn($herramienta, $this->ubicacionPlanta));
+        $this->assertDatabaseHas('almacen_prestamo_movimientos', [
+            'prestamo_id' => $prestamo->id,
+            'tipo' => 'BAJA',
+            'condicion' => 'DANADA',
+            'cantidad' => 0.5,
+            'observaciones' => 'Carcasa rota durante el uso.',
+        ]);
+        $this->assertDatabaseHas('almacen_prestamo_movimientos', [
+            'prestamo_id' => $prestamo->id,
+            'tipo' => 'BAJA',
+            'condicion' => 'EXTRAVIADA',
+            'cantidad' => 1.5,
+        ]);
+        $this->assertDatabaseCount('almacen_movimientos', 1);
+
+        $this->get(route('prestamos-herramientas.historial'))
+            ->assertOk()
+            ->assertSee('DAÑADA')
+            ->assertSee('EXTRAVIADA')
+            ->assertSee('Carcasa rota durante el uso.');
+
+        $this->get(route('prestamos-herramientas.index', ['condicion' => 'EXTRAVIADA']))
+            ->assertOk()
+            ->assertSee('HER-BAJA');
+        $this->get(route('prestamos-herramientas.historial', ['condicion' => 'DANADA']))
+            ->assertOk()
+            ->assertSee('Carcasa rota durante el uso.')
+            ->assertDontSee('No localizada después de la jornada.');
     }
 
     public function test_busca_herramientas_disponibles_por_codigo_nombre_o_serie(): void
@@ -325,6 +518,15 @@ class AlmacenTest extends TestCase
         ]);
         $herramienta = $this->crearArticulo('HER-002', 'HERRAMIENTA', 1, 100);
         $existencia = $this->existenciaEn($herramienta, $this->ubicacionPlanta);
+        $articuloTajo = AlmacenArticulo::query()->create([
+            'sku' => 'MAT-SOLO-TAJO', 'nombre' => 'Material exclusivo Tajo', 'tipo' => 'MATERIAL',
+            'unidad_medida' => 'pieza', 'ubicacion_id' => $this->ubicacionTajo->id,
+            'stock_actual' => 2, 'stock_minimo' => 0, 'costo_promedio' => 5, 'activo' => true,
+        ]);
+        AlmacenExistencia::query()->create([
+            'articulo_id' => $articuloTajo->id, 'ubicacion_id' => $this->ubicacionTajo->id,
+            'cantidad' => 2, 'stock_minimo' => 0,
+        ]);
 
         $this->actingAs($usuario)->post(route('inventario.movimientos.guardar'), [
             'articulo_id' => $herramienta->id, 'tipo' => 'ENTRADA', 'cantidad' => 1,
@@ -336,6 +538,10 @@ class AlmacenTest extends TestCase
             'tipo_asignacion' => 'PRESTAMO', 'cantidad' => 1,
             'fecha_compromiso' => now()->addDay()->format('Y-m-d'),
         ])->assertForbidden();
+
+        $this->getJson(route('inventario.movimientos.buscar-articulos', ['q' => 'SOLO-TAJO']))
+            ->assertOk()
+            ->assertJsonCount(0, 'resultados');
 
         $this->get(route('inventario.index'))->assertOk()->assertSee('ALM-PLANTA')->assertDontSee('ALM-TAJO');
     }
@@ -471,6 +677,10 @@ class AlmacenTest extends TestCase
         ])->assertRedirectToRoute('inventario.movimientos');
 
         $this->actingAs($usuario)->get(route('inventario.articulos.editar', $articulo))->assertForbidden();
+        $this->post(route('inventario.articulos.costo.actualizar', $articulo), [
+            'costo_nuevo' => 20,
+            'motivo' => 'Intento fuera de la sección autorizada.',
+        ])->assertForbidden();
         $this->get(route('inventario.movimientos'))->assertOk()->assertDontSee('TRANSFERENCIA-EXTERNA');
         $this->put(route('inventario.ubicaciones.actualizar', $this->ubicacionTajo), [
             'codigo' => $this->ubicacionTajo->codigo,
@@ -642,6 +852,17 @@ class AlmacenTest extends TestCase
             $table->timestamp('fecha_movimiento');
             $table->timestamps();
         });
+        Schema::create('almacen_ajustes_costo', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('articulo_id');
+            $table->decimal('costo_anterior', 18, 4);
+            $table->decimal('costo_nuevo', 18, 4);
+            $table->decimal('existencia_actual', 18, 3);
+            $table->string('motivo', 500);
+            $table->unsignedBigInteger('usuario_id')->nullable();
+            $table->timestamp('fecha_ajuste');
+            $table->timestamps();
+        });
         Schema::create('almacen_prestamos', function (Blueprint $table) {
             $table->id();
             $table->string('folio')->unique();
@@ -654,6 +875,7 @@ class AlmacenTest extends TestCase
             $table->string('estado');
             $table->decimal('cantidad_entregada', 18, 3);
             $table->decimal('cantidad_devuelta', 18, 3)->default(0);
+            $table->decimal('cantidad_baja', 18, 3)->default(0);
             $table->decimal('costo_unitario_salida', 18, 4)->default(0);
             $table->unsignedBigInteger('ubicacion_id');
             $table->timestamp('fecha_salida');
@@ -668,6 +890,7 @@ class AlmacenTest extends TestCase
             $table->id();
             $table->unsignedBigInteger('prestamo_id');
             $table->string('tipo');
+            $table->string('condicion')->nullable();
             $table->decimal('cantidad', 18, 3);
             $table->unsignedBigInteger('usuario_id')->nullable();
             $table->string('observaciones')->nullable();

@@ -18,7 +18,7 @@
 <div class="card shadow-sm">
     <div class="table-responsive">
         <table class="table table-striped align-middle mb-0">
-            <thead class="table-dark"><tr><th>Fecha</th><th>Artículo</th><th>Movimiento</th><th>Origen</th><th>Destino</th><th class="text-end">Cantidad</th><th class="text-end">Existencia total</th><th>Trabajador / referencia</th></tr></thead>
+            <thead class="table-dark"><tr><th>Fecha</th><th>Artículo</th><th>Movimiento</th><th>Origen</th><th>Destino</th><th class="text-end">Cantidad</th><th class="text-end">Costo unitario</th><th class="text-end">Importe</th><th class="text-end">Existencia total</th><th>Trabajador / referencia</th></tr></thead>
             <tbody>
             @forelse($movimientos as $movimiento)
             <tr>
@@ -28,11 +28,13 @@
                 <td>@if($movimiento->ubicacionOrigen)<strong>{{ $movimiento->ubicacionOrigen->almacen?->codigo }}</strong><br><span class="small">{{ $movimiento->ubicacionOrigen->codigo }}</span><br><span class="small text-muted">{{ number_format((float) $movimiento->existencia_origen_anterior, 3) }} → {{ number_format((float) $movimiento->existencia_origen_nueva, 3) }} {{ $movimiento->articulo?->unidad_medida }}</span>@else<span class="text-muted">Externo</span>@endif</td>
                 <td>@if($movimiento->ubicacionDestino)<strong>{{ $movimiento->ubicacionDestino->almacen?->codigo }}</strong><br><span class="small">{{ $movimiento->ubicacionDestino->codigo }}</span><br><span class="small text-muted">{{ number_format((float) $movimiento->existencia_destino_anterior, 3) }} → {{ number_format((float) $movimiento->existencia_destino_nueva, 3) }} {{ $movimiento->articulo?->unidad_medida }}</span>@else<span class="text-muted">Externo</span>@endif</td>
                 <td class="text-end">{{ number_format((float) $movimiento->cantidad, 3) }} <span class="small text-muted">{{ $movimiento->articulo?->unidad_medida }}</span></td>
+                <td class="text-end">${{ number_format((float) $movimiento->costo_unitario, 4) }}</td>
+                <td class="text-end">${{ number_format((float) $movimiento->costo_total, 2) }}</td>
                 <td class="text-end">{{ number_format((float) $movimiento->existencia_anterior, 3) }} → {{ number_format((float) $movimiento->existencia_nueva, 3) }} <span class="small text-muted">{{ $movimiento->articulo?->unidad_medida }}</span></td>
                 <td>@if($movimiento->numero_empleado)<strong>#{{ $movimiento->numero_empleado }} {{ $movimiento->empleado_nombre }}</strong><br><span class="small text-muted">{{ $movimiento->empleado_seccion }}</span>@endif @if($movimiento->referencia)<div class="small">Ref. {{ $movimiento->referencia }}</div>@endif</td>
             </tr>
             @empty
-            <tr><td colspan="8" class="text-center text-muted py-5">No hay movimientos con estos filtros.</td></tr>
+            <tr><td colspan="10" class="text-center text-muted py-5">No hay movimientos con estos filtros.</td></tr>
             @endforelse
             </tbody>
         </table>

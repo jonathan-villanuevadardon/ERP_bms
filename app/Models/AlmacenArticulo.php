@@ -47,4 +47,9 @@ class AlmacenArticulo extends Model
     {
         return $this->hasMany(AlmacenPrestamo::class, 'articulo_id');
     }
+
+    public function ajustesCosto(): HasMany
+    {
+        return $this->hasMany(AlmacenAjusteCosto::class, 'articulo_id');
+    }
 }

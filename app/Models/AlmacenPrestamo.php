@@ -17,7 +17,7 @@ class AlmacenPrestamo extends Model
     protected $fillable = [
         'folio', 'articulo_id', 'numero_empleado', 'empleado_nombre',
         'empleado_area', 'empleado_seccion', 'tipo_asignacion', 'estado',
-        'cantidad_entregada', 'cantidad_devuelta', 'costo_unitario_salida',
+        'cantidad_entregada', 'cantidad_devuelta', 'cantidad_baja', 'costo_unitario_salida',
         'fecha_salida', 'fecha_compromiso', 'fecha_devolucion', 'usuario_entrega_id',
         'usuario_recibe_id', 'ubicacion_id', 'observaciones',
     ];
@@ -26,6 +26,7 @@ class AlmacenPrestamo extends Model
         'numero_empleado' => 'integer',
         'cantidad_entregada' => 'decimal:3',
         'cantidad_devuelta' => 'decimal:3',
+        'cantidad_baja' => 'decimal:3',
         'costo_unitario_salida' => 'decimal:4',
         'fecha_salida' => 'datetime',
         'fecha_compromiso' => SqlServerDate::class,
