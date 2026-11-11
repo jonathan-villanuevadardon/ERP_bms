@@ -55,11 +55,26 @@
                 <div class="row g-3">
                     @forelse($almacen->ubicaciones as $ubicacion)
                     <div class="col-md-6">
-                        <div class="border rounded p-3 h-100">
-                            <div class="d-flex justify-content-between gap-2"><strong>{{ $ubicacion->codigo }}</strong><span class="badge text-bg-secondary">{{ $ubicacion->existencias->count() }} SKU</span></div>
+                        <div class="border rounded p-3 h-100 {{ $ubicacion->activo ? '' : 'bg-body-tertiary' }}">
+                            <div class="d-flex justify-content-between align-items-start gap-2">
+                                <div><strong>{{ $ubicacion->codigo }}</strong> @if(! $ubicacion->activo)<span class="badge text-bg-secondary ms-1">Inactiva</span>@endif</div>
+                                <span class="badge text-bg-secondary">{{ $ubicacion->existencias->count() }} SKU</span>
+                            </div>
                             <div>{{ $ubicacion->anaquel }} · Nivel {{ $ubicacion->nivel }}</div>
                             <div class="small text-muted">{{ $ubicacion->descripcion ?: 'Sin descripción' }}</div>
                             @if($ubicacion->existencias->where('cantidad', '>', 0)->isNotEmpty())<div class="small mt-2">Con stock: {{ $ubicacion->existencias->where('cantidad', '>', 0)->count() }} artículos</div>@endif
+                            <details class="mt-3">
+                                <summary class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil-square" aria-hidden="true"></i> Editar ubicación</summary>
+                                <form method="POST" action="{{ route('inventario.ubicaciones.actualizar', $ubicacion) }}" class="row g-2 mt-2 p-3 bg-body-tertiary rounded">
+                                    @csrf @method('PUT')
+                                    <div class="col-sm-6"><label class="form-label small" for="ubic-edit-codigo-{{ $ubicacion->id }}">Código</label><input id="ubic-edit-codigo-{{ $ubicacion->id }}" name="codigo" class="form-control form-control-sm" maxlength="50" value="{{ $ubicacion->codigo }}" required></div>
+                                    <div class="col-sm-6"><label class="form-label small" for="ubic-edit-anaquel-{{ $ubicacion->id }}">Anaquel</label><input id="ubic-edit-anaquel-{{ $ubicacion->id }}" name="anaquel" class="form-control form-control-sm" maxlength="80" value="{{ $ubicacion->anaquel }}" required></div>
+                                    <div class="col-sm-6"><label class="form-label small" for="ubic-edit-nivel-{{ $ubicacion->id }}">Nivel</label><input id="ubic-edit-nivel-{{ $ubicacion->id }}" name="nivel" class="form-control form-control-sm" maxlength="50" value="{{ $ubicacion->nivel }}" required></div>
+                                    <div class="col-sm-6"><label class="form-label small" for="ubic-edit-desc-{{ $ubicacion->id }}">Descripción</label><input id="ubic-edit-desc-{{ $ubicacion->id }}" name="descripcion" class="form-control form-control-sm" maxlength="255" value="{{ $ubicacion->descripcion }}"></div>
+                                    <div class="col-sm-6 d-flex align-items-end"><div class="form-check form-switch mb-1"><input type="hidden" name="activo" value="0"><input class="form-check-input" type="checkbox" id="ubic-edit-activo-{{ $ubicacion->id }}" name="activo" value="1" @checked($ubicacion->activo)><label class="form-check-label" for="ubic-edit-activo-{{ $ubicacion->id }}">Ubicación activa</label></div></div>
+                                    <div class="col-sm-6 d-flex align-items-end"><button type="submit" class="btn btn-sm btn-primary w-100"><i class="bi bi-check-lg" aria-hidden="true"></i> Guardar cambios</button></div>
+                                </form>
+                            </details>
                         </div>
                     </div>
                     @empty

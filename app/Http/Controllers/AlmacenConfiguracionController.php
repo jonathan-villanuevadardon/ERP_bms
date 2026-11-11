@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AlmacenAlmacen;
 use App\Models\AlmacenExistencia;
+use App\Models\AlmacenUbicacion;
 use App\Services\SeccionService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -75,15 +76,39 @@ class AlmacenConfiguracionController extends Controller
             throw ValidationException::withMessages(['almacen_id' => 'El almacén está inactivo.']);
         }
 
-        $data = $request->validate([
-            'codigo' => ['required', 'string', 'max:50', 'unique:almacen_ubicaciones,codigo'],
-            'anaquel' => ['required', 'string', 'max:80'],
-            'nivel' => ['required', 'string', 'max:50'],
-            'descripcion' => ['nullable', 'string', 'max:255'],
-        ]);
+        $data = $this->validarUbicacion($request);
         $almacen->ubicaciones()->create([...$data, 'activo' => true]);
 
         return redirect()->route('inventario.almacenes')->with('success', 'Ubicación agregada correctamente.');
+    }
+
+    public function updateUbicacion(Request $request, AlmacenUbicacion $ubicacion)
+    {
+        $ubicacion->load('almacen');
+        SeccionService::autorizar($request->user(), $ubicacion->almacen->seccion);
+
+        $data = $this->validarUbicacion($request, $ubicacion);
+        $data['activo'] = $request->boolean('activo');
+
+        if ($data['activo'] && ! $ubicacion->activo && ! $ubicacion->almacen->activo) {
+            throw ValidationException::withMessages([
+                'activo' => 'No puedes activar una ubicación de un almacén inactivo.',
+            ]);
+        }
+
+        if (! $data['activo']) {
+            $tieneStock = $ubicacion->existencias()->where('cantidad', '>', 0)->exists();
+            $tienePrestamos = $ubicacion->prestamos()->whereIn('estado', ['ACTIVO', 'PARCIAL'])->exists();
+            if ($tieneStock || $tienePrestamos) {
+                throw ValidationException::withMessages([
+                    'activo' => 'No puedes desactivar una ubicación con existencias o préstamos pendientes.',
+                ]);
+            }
+        }
+
+        $ubicacion->update($data);
+
+        return redirect()->route('inventario.almacenes')->with('success', 'Ubicación actualizada correctamente.');
     }
 
     public function updateReglas(Request $request, AlmacenExistencia $existencia)
@@ -110,6 +135,17 @@ class AlmacenConfiguracionController extends Controller
             'codigo' => ['required', 'string', 'max:50', Rule::unique('almacen_almacenes', 'codigo')->ignore($almacen?->id)],
             'nombre' => ['required', 'string', 'max:150'],
             'seccion' => ['required', 'string', 'max:100', Rule::in($secciones)],
+            'descripcion' => ['nullable', 'string', 'max:255'],
+            'activo' => ['nullable', 'boolean'],
+        ]);
+    }
+
+    private function validarUbicacion(Request $request, ?AlmacenUbicacion $ubicacion = null): array
+    {
+        return $request->validate([
+            'codigo' => ['required', 'string', 'max:50', Rule::unique('almacen_ubicaciones', 'codigo')->ignore($ubicacion?->id)],
+            'anaquel' => ['required', 'string', 'max:80'],
+            'nivel' => ['required', 'string', 'max:50'],
             'descripcion' => ['nullable', 'string', 'max:255'],
             'activo' => ['nullable', 'boolean'],
         ]);

@@ -115,6 +115,31 @@ class AlmacenTest extends TestCase
         $this->assertDatabaseHas('almacen_ubicaciones', ['almacen_id' => $almacen->id, 'codigo' => 'NUEVO-A1-N1']);
     }
 
+    public function test_edita_ubicacion_desde_el_almacen(): void
+    {
+        $this->actingAs($this->usuario)->get(route('inventario.almacenes'))
+            ->assertOk()
+            ->assertSee('Editar ubicación');
+
+        $this->put(route('inventario.ubicaciones.actualizar', $this->ubicacionPlanta), [
+            'codigo' => 'PL-B2-N3',
+            'anaquel' => 'B2',
+            'nivel' => 'N3',
+            'descripcion' => 'Refacciones eléctricas',
+            'activo' => 1,
+        ])->assertRedirectToRoute('inventario.almacenes');
+
+        $this->assertDatabaseHas('almacen_ubicaciones', [
+            'id' => $this->ubicacionPlanta->id,
+            'almacen_id' => $this->almacenPlanta->id,
+            'codigo' => 'PL-B2-N3',
+            'anaquel' => 'B2',
+            'nivel' => 'N3',
+            'descripcion' => 'Refacciones eléctricas',
+            'activo' => true,
+        ]);
+    }
+
     public function test_entradas_actualizan_stock_por_ubicacion_y_costo_promedio(): void
     {
         $articulo = $this->crearArticulo('MAT-001', 'MATERIAL', 0, 0);
@@ -447,6 +472,12 @@ class AlmacenTest extends TestCase
 
         $this->actingAs($usuario)->get(route('inventario.articulos.editar', $articulo))->assertForbidden();
         $this->get(route('inventario.movimientos'))->assertOk()->assertDontSee('TRANSFERENCIA-EXTERNA');
+        $this->put(route('inventario.ubicaciones.actualizar', $this->ubicacionTajo), [
+            'codigo' => $this->ubicacionTajo->codigo,
+            'anaquel' => $this->ubicacionTajo->anaquel,
+            'nivel' => $this->ubicacionTajo->nivel,
+            'activo' => 1,
+        ])->assertForbidden();
     }
 
     public function test_no_desactiva_articulo_con_stock_ni_cambia_seccion_del_almacen(): void
@@ -467,6 +498,15 @@ class AlmacenTest extends TestCase
 
         $this->assertTrue($articulo->refresh()->activo);
         $this->assertSame('PLANTA', $this->almacenPlanta->refresh()->seccion);
+
+        $this->put(route('inventario.ubicaciones.actualizar', $this->ubicacionPlanta), [
+            'codigo' => $this->ubicacionPlanta->codigo,
+            'anaquel' => $this->ubicacionPlanta->anaquel,
+            'nivel' => $this->ubicacionPlanta->nivel,
+            'activo' => 0,
+        ])->assertSessionHasErrors('activo');
+
+        $this->assertTrue($this->ubicacionPlanta->refresh()->activo);
     }
 
     private function crearArticulo(string $sku, string $tipo, float $stock, float $costo): AlmacenArticulo

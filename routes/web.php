@@ -180,6 +180,7 @@ Route::middleware(['auth', VerificarPerfil::class])->group(function () {
         Route::post('almacenes', [AlmacenConfiguracionController::class, 'store'])->name('almacenes.guardar');
         Route::put('almacenes/{almacen}', [AlmacenConfiguracionController::class, 'update'])->name('almacenes.actualizar');
         Route::post('almacenes/{almacen}/ubicaciones', [AlmacenConfiguracionController::class, 'storeUbicacion'])->name('ubicaciones.guardar');
+        Route::put('ubicaciones/{ubicacion}', [AlmacenConfiguracionController::class, 'updateUbicacion'])->name('ubicaciones.actualizar');
         Route::put('existencias/{existencia}/reglas', [AlmacenConfiguracionController::class, 'updateReglas'])->name('existencias.reglas');
         Route::get('movimientos', [InventarioController::class, 'movimientos'])->name('movimientos');
         Route::get('movimientos/crear', [InventarioController::class, 'crearMovimiento'])->name('movimientos.crear');
